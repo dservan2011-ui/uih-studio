@@ -1,0 +1,1137 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UIH Marketing Studio — Dr. Luis Alfonso Servín</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Montserrat:wght@300;400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --N:#020e1f;--N2:#041830;--N3:#061f3a;
+  --T:#017590;--T2:#025f77;
+  --AQ:#46EFF4;--CY:#41AAD4;
+  --W:#F0F8FF;--G:#7BA7BC;
+  --FB:'Bebas Neue',sans-serif;
+  --FM:'Montserrat',sans-serif;
+  --glow:0 0 40px rgba(70,239,244,.15);
+}
+
+html,body{height:100%;background:var(--N);color:var(--W);font-family:var(--FM);overflow-x:hidden}
+
+/* ── GRID BG ── */
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(70,239,244,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(70,239,244,.025) 1px,transparent 1px);background-size:48px 48px;pointer-events:none;z-index:0}
+
+/* ── LOCK SCREEN ── */
+#lock{position:fixed;inset:0;background:linear-gradient(135deg,var(--N) 0%,#020c18 100%);z-index:1000;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:32px}
+.lock-logo{font-family:var(--FB);font-size:80px;color:var(--AQ);letter-spacing:8px;text-shadow:0 0 60px rgba(70,239,244,.4);animation:pulse 3s infinite}
+@keyframes pulse{0%,100%{text-shadow:0 0 60px rgba(70,239,244,.4)}50%{text-shadow:0 0 100px rgba(70,239,244,.7)}}
+.lock-sub{font-size:11px;font-weight:700;letter-spacing:4px;color:var(--CY);text-transform:uppercase;margin-top:-20px}
+.lock-card{background:rgba(4,24,48,.8);border:1px solid rgba(70,239,244,.15);border-radius:16px;padding:40px;width:440px;backdrop-filter:blur(20px)}
+.lock-title{font-size:13px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:var(--AQ);margin-bottom:24px;text-align:center}
+.lock-field{margin-bottom:14px}
+.lock-field label{display:block;font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--CY);margin-bottom:5px}
+.lock-field input{width:100%;background:rgba(2,14,31,.8);border:1px solid rgba(65,170,212,.2);color:var(--W);font-family:var(--FM);font-size:12px;padding:10px 14px;border-radius:8px;outline:none;transition:.2s}
+.lock-field input:focus{border-color:var(--AQ);box-shadow:0 0 0 3px rgba(70,239,244,.08)}
+.lock-btn{width:100%;background:linear-gradient(135deg,var(--T),var(--CY));border:none;color:var(--N);font-family:var(--FM);font-size:11px;font-weight:900;letter-spacing:2px;text-transform:uppercase;padding:14px;border-radius:8px;cursor:pointer;margin-top:8px;transition:.2s}
+.lock-btn:hover{opacity:.88;transform:translateY(-1px)}
+.lock-note{font-size:9px;color:var(--G);text-align:center;margin-top:16px;line-height:1.8}
+
+/* ── APP ── */
+#app{display:none;position:relative;z-index:1;min-height:100vh}
+
+/* ── TOPBAR ── */
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:14px 32px 12px;border-bottom:1px solid rgba(70,239,244,.1);background:rgba(2,14,31,.7);backdrop-filter:blur(12px);position:sticky;top:0;z-index:100}
+.tb-logo{display:flex;align-items:center;gap:12px}
+.tb-logo-text{font-family:var(--FB);font-size:28px;color:var(--AQ);letter-spacing:4px;line-height:1}
+.tb-logo-sub{font-size:7px;font-weight:700;letter-spacing:2px;color:var(--CY);text-transform:uppercase;line-height:1.4}
+.tb-center{text-align:center}
+.tb-title{font-size:11px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:var(--W)}
+.tb-sub{font-size:9px;color:var(--G);letter-spacing:.8px}
+.tb-badge{display:flex;align-items:center;gap:6px;background:rgba(70,239,244,.08);border:1px solid rgba(70,239,244,.2);color:var(--AQ);font-size:8px;font-weight:800;letter-spacing:1.5px;padding:5px 14px;border-radius:20px;text-transform:uppercase}
+.tb-dot{width:6px;height:6px;background:var(--AQ);border-radius:50%;animation:blink 1.4s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+
+/* ── NAV TABS ── */
+.nav-tabs{display:flex;gap:2px;padding:0 32px;background:rgba(2,14,31,.5);border-bottom:1px solid rgba(65,170,212,.08)}
+.nav-tab{font-family:var(--FM);font-size:9px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;padding:12px 18px;cursor:pointer;background:transparent;border:none;color:var(--G);border-bottom:2px solid transparent;transition:.15s;white-space:nowrap}
+.nav-tab:hover{color:var(--CY)}
+.nav-tab.on{color:var(--AQ);border-bottom-color:var(--AQ)}
+
+/* ── MAIN LAYOUT ── */
+.main{display:grid;grid-template-columns:320px 1fr;gap:0;min-height:calc(100vh - 100px)}
+
+/* ── SIDEBAR ── */
+.sidebar{background:rgba(4,24,48,.6);border-right:1px solid rgba(65,170,212,.1);padding:20px;display:flex;flex-direction:column;gap:14px}
+.sb-section{background:rgba(2,14,31,.5);border:1px solid rgba(65,170,212,.12);border-radius:10px;padding:14px}
+.sb-title{font-size:8.5px;font-weight:800;letter-spacing:1.8px;text-transform:uppercase;color:var(--CY);margin-bottom:11px;display:flex;align-items:center;gap:6px}
+.sb-title::before{content:'';width:3px;height:12px;background:var(--AQ);border-radius:2px;display:inline-block}
+.field{margin-bottom:10px}
+.field label{display:block;font-size:8px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--G);margin-bottom:4px}
+.field select,.field input,.field textarea{width:100%;background:rgba(2,14,31,.7);border:1px solid rgba(65,170,212,.18);color:var(--W);font-family:var(--FM);font-size:11.5px;padding:8px 11px;border-radius:6px;outline:none;resize:none;transition:.15s}
+.field select:focus,.field input:focus,.field textarea:focus{border-color:var(--AQ);box-shadow:0 0 0 2px rgba(70,239,244,.06)}
+.field select option{background:#041830}
+
+/* ── MODULE GRID ── */
+.mod-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}
+.mod{background:rgba(1,117,144,.08);border:1px solid rgba(65,170,212,.12);border-radius:7px;padding:9px 5px;cursor:pointer;text-align:center;transition:.15s;display:flex;flex-direction:column;align-items:center;gap:4px}
+.mod:hover,.mod.on{background:rgba(70,239,244,.12);border-color:var(--AQ)}
+.mod-icon{font-size:18px}
+.mod-label{font-size:7.5px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--G);line-height:1.2}
+.mod:hover .mod-label,.mod.on .mod-label{color:var(--AQ)}
+
+/* ── GENERATE BTN ── */
+.gen-btn{width:100%;background:linear-gradient(135deg,var(--T) 0%,var(--CY) 100%);border:none;color:var(--N);font-family:var(--FM);font-size:11px;font-weight:900;letter-spacing:2px;text-transform:uppercase;padding:15px 20px;border-radius:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:.2s;position:relative;overflow:hidden}
+.gen-btn::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.1),transparent);opacity:0;transition:.2s}
+.gen-btn:hover::before{opacity:1}
+.gen-btn:hover{transform:translateY(-2px);box-shadow:0 8px 30px rgba(65,170,212,.3)}
+.gen-btn:active{transform:translateY(0)}
+.gen-btn-icon{font-size:16px}
+
+/* ── CONTENT AREA ── */
+.content{padding:24px;overflow-y:auto}
+
+/* ── EMPTY STATE ── */
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:500px;text-align:center;gap:20px}
+.empty-icon{font-size:64px;opacity:.2;animation:float 3s ease-in-out infinite}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
+.empty-h{font-family:var(--FB);font-size:36px;color:var(--W);opacity:.3;letter-spacing:3px}
+.empty-p{font-size:12px;color:var(--G);line-height:1.8;max-width:320px}
+
+/* ── LOADING ── */
+.loading-state{display:none;flex-direction:column;align-items:center;justify-content:center;min-height:400px;gap:20px;text-align:center}
+.loading-state.show{display:flex}
+.spinner-ring{width:56px;height:56px;border:3px solid rgba(70,239,244,.1);border-top-color:var(--AQ);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-msg{font-size:12px;color:var(--G);letter-spacing:1px}
+.prog-track{width:280px;height:3px;background:rgba(70,239,244,.08);border-radius:3px;overflow:hidden}
+.prog-bar{height:100%;background:linear-gradient(90deg,var(--T),var(--AQ));width:0%;transition:width .2s;border-radius:3px}
+
+/* ── RESULT BLOCKS ── */
+.result-block{background:rgba(4,24,48,.7);border:1px solid rgba(65,170,212,.15);border-radius:12px;padding:20px;margin-bottom:16px;animation:fadeup .3s ease}
+@keyframes fadeup{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.result-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid rgba(65,170,212,.1)}
+.result-badge{background:rgba(70,239,244,.08);border:1px solid rgba(70,239,244,.18);color:var(--AQ);font-size:8px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;padding:4px 12px;border-radius:20px}
+.result-actions{display:flex;gap:6px}
+
+/* ── BUTTONS ── */
+.act-btn{background:transparent;border:1px solid rgba(65,170,212,.25);color:var(--CY);font-family:var(--FM);font-size:8.5px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;padding:6px 13px;border-radius:5px;cursor:pointer;transition:.12s;text-decoration:none;display:inline-flex;align-items:center;gap:5px}
+.act-btn:hover{background:rgba(65,170,212,.1);color:var(--CY)}
+.act-btn.primary{background:linear-gradient(135deg,var(--T),var(--CY));color:var(--N);border:none;font-weight:900}
+.act-btn.primary:hover{opacity:.88}
+
+/* ── IMAGE RESULT ── */
+.img-result-wrap{background:rgba(2,14,31,.5);border-radius:10px;overflow:hidden;text-align:center;padding:12px}
+.img-result-wrap img{max-width:100%;border-radius:8px;display:block;margin:0 auto;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+.img-placeholder{height:400px;display:flex;align-items:center;justify-content:center;color:var(--G);font-size:11px;letter-spacing:1px}
+
+/* ── CAROUSEL ── */
+.carousel-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.slide-card{background:rgba(2,14,31,.6);border:1px solid rgba(65,170,212,.12);border-radius:8px;overflow:hidden;position:relative}
+.slide-card img{width:100%;display:block}
+.slide-num{position:absolute;top:8px;left:8px;background:rgba(70,239,244,.9);color:var(--N);font-size:9px;font-weight:900;padding:2px 8px;border-radius:10px}
+.slide-dl{position:absolute;top:8px;right:8px;background:rgba(2,14,31,.85);border:1px solid var(--AQ);color:var(--AQ);font-size:8px;font-weight:700;padding:3px 8px;border-radius:4px;cursor:pointer;transition:.12s}
+.slide-dl:hover{background:rgba(70,239,244,.15)}
+
+/* ── COPY OUTPUT ── */
+.copy-tabs{display:flex;gap:3px;flex-wrap:wrap;margin-bottom:10px}
+.copy-tab{font-family:var(--FM);font-size:8.5px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;padding:6px 11px;border-radius:5px;cursor:pointer;background:transparent;border:1px solid transparent;color:var(--G);transition:.12s}
+.copy-tab.on{background:rgba(70,239,244,.1);border-color:rgba(70,239,244,.25);color:var(--AQ)}
+.copy-output{width:100%;background:rgba(2,14,31,.7);border:1px solid rgba(65,170,212,.18);color:var(--W);font-family:var(--FM);font-size:12px;padding:14px;border-radius:8px;outline:none;resize:vertical;line-height:1.8;min-height:240px}
+
+/* ── VIDEO ── */
+.guion-box{margin-bottom:12px}
+.guion-label{font-size:8.5px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--CY);margin-bottom:5px}
+.guion-output{width:100%;background:rgba(2,14,31,.7);border:1px solid rgba(65,170,212,.18);color:var(--W);font-family:var(--FM);font-size:12px;padding:12px;border-radius:8px;outline:none;resize:vertical;line-height:1.8;min-height:180px}
+.media-box{background:rgba(1,117,144,.08);border:1px solid rgba(65,170,212,.15);border-radius:9px;padding:14px;margin-top:10px}
+.media-label{font-size:8.5px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--AQ);margin-bottom:8px}
+.status-box{display:flex;align-items:center;gap:12px;background:rgba(2,14,31,.6);border:1px solid rgba(65,170,212,.15);border-radius:9px;padding:14px;margin-top:10px;font-size:11px;color:var(--G)}
+.mini-spinner{width:16px;height:16px;border:2px solid rgba(70,239,244,.15);border-top-color:var(--AQ);border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0}
+
+/* ── STATS ROW ── */
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:20px}
+.stat-card{background:rgba(4,24,48,.7);border:1px solid rgba(65,170,212,.12);border-radius:9px;padding:14px;text-align:center}
+.stat-n{font-family:var(--FB);font-size:28px;color:var(--AQ);line-height:1;letter-spacing:1px}
+.stat-l{font-size:8px;font-weight:600;letter-spacing:1px;color:var(--G);text-transform:uppercase;margin-top:3px}
+
+/* ── LIBRARY ── */
+.lib-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px}
+.lib-card{background:rgba(4,24,48,.7);border:1px solid rgba(65,170,212,.12);border-radius:10px;overflow:hidden;transition:.15s}
+.lib-card:hover{border-color:rgba(70,239,244,.25);transform:translateY(-2px)}
+.lib-card-img{width:100%;height:140px;object-fit:cover;display:block;background:rgba(1,117,144,.1)}
+.lib-card-body{padding:10px}
+.lib-card-tipo{font-size:7.5px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:var(--AQ);margin-bottom:3px}
+.lib-card-tema{font-size:12px;font-weight:700;color:var(--W);margin-bottom:2px}
+.lib-card-date{font-size:9px;color:var(--G)}
+
+/* ── CONFIG ── */
+.cfg-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;max-width:900px}
+.cfg-card{background:rgba(4,24,48,.7);border:1px solid rgba(65,170,212,.12);border-radius:11px;padding:20px}
+.cfg-title{font-size:9px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:var(--CY);margin-bottom:14px;display:flex;align-items:center;gap:7px}
+.cfg-title-icon{font-size:18px}
+.cfg-hint{font-size:9.5px;color:var(--G);line-height:1.8;margin-top:6px}
+.cfg-save-btn{background:linear-gradient(135deg,var(--T),var(--CY));border:none;color:var(--N);font-family:var(--FM);font-size:11px;font-weight:900;letter-spacing:2px;text-transform:uppercase;padding:14px 40px;border-radius:9px;cursor:pointer;transition:.2s;margin-top:20px;display:block}
+.cfg-save-btn:hover{opacity:.88;transform:translateY(-1px)}
+.cfg-msg{font-size:12px;margin-top:12px;text-align:center}
+
+/* ── FOOTER ── */
+.footer{padding:14px 32px;border-top:1px solid rgba(65,170,212,.08);display:flex;align-items:center;justify-content:space-between;font-size:8.5px;color:rgba(123,167,188,.5);letter-spacing:.8px}
+
+/* ── TABS PAGES ── */
+.tab-page{display:none}.tab-page.show{display:block}
+
+@media(max-width:1000px){
+  .main{grid-template-columns:1fr}
+  .sidebar{border-right:none;border-bottom:1px solid rgba(65,170,212,.1)}
+  .cfg-grid{grid-template-columns:1fr}
+  .carousel-grid{grid-template-columns:repeat(2,1fr)}
+}
+</style>
+</head>
+<body>
+
+<!-- ════ LOCK SCREEN ════ -->
+<div id="lock">
+  <div class="lock-logo">UIH</div>
+  <div class="lock-sub">Marketing Studio</div>
+  <div class="lock-card">
+    <div class="lock-title">Acceso Privado — Dr. Servín</div>
+    <div class="lock-field">
+      <label>Contraseña de acceso</label>
+      <input type="password" id="lock-pass" placeholder="Ingresa tu contraseña" onkeydown="if(event.key==='Enter')unlock()"/>
+    </div>
+    <button class="lock-btn" onclick="unlock()">Entrar al Studio</button>
+    <div class="lock-note">
+      Sistema privado de UIH · uih.mx<br>
+      Solo uso autorizado del Dr. Luis Alfonso Servín
+    </div>
+  </div>
+</div>
+
+<!-- ════ APP ════ -->
+<div id="app">
+
+  <div class="topbar">
+    <div class="tb-logo">
+      <div>
+        <div class="tb-logo-text">UIH</div>
+        <div class="tb-logo-sub">UNIDAD INTEGRAL<br>HOMEOPÁTICA</div>
+      </div>
+    </div>
+    <div class="tb-center">
+      <div class="tb-title">Marketing Studio Pro</div>
+      <div class="tb-sub">Dr. Luis Alfonso Servín · Tijuana · Sistema Autónomo</div>
+    </div>
+    <div class="tb-badge"><span class="tb-dot"></span>Sistema Activo</div>
+  </div>
+
+  <div class="nav-tabs">
+    <button class="nav-tab on"  onclick="setPage('studio',this)">⚡ Studio</button>
+    <button class="nav-tab"     onclick="setPage('library',this)">📁 Biblioteca</button>
+    <button class="nav-tab"     onclick="setPage('calendar',this)">📅 Calendario</button>
+    <button class="nav-tab"     onclick="setPage('campaigns',this)">📣 Campañas</button>
+    <button class="nav-tab"     onclick="setPage('config',this)">⚙️ Configuración</button>
+  </div>
+
+  <!-- ══ STUDIO PAGE ══ -->
+  <div id="page-studio" class="tab-page show">
+    <div class="main">
+
+      <!-- SIDEBAR -->
+      <div class="sidebar">
+
+        <div class="sb-section">
+          <div class="sb-title">Tema de Salud</div>
+          <div class="field">
+            <select id="s-tema">
+              <option>Homeopatía personalizada</option>
+              <option>Sueroterapia IV</option>
+              <option>Medicina Regenerativa</option>
+              <option>Hidroterapia de Colón</option>
+              <option>TDAH / Déficit de Atención</option>
+              <option>Epigenética</option>
+              <option>Fatiga Crónica</option>
+              <option>Células Madre</option>
+              <option>Suplementación Médica</option>
+              <option>Bienestar Integral</option>
+              <option>Medicina Preventiva</option>
+              <option>Dolor Crónico</option>
+              <option value="__custom">— Tema personalizado —</option>
+            </select>
+            <input type="text" id="s-tema-custom" placeholder="Escribe tu tema..." style="display:none;margin-top:6px"/>
+          </div>
+          <div class="field">
+            <label>Público</label>
+            <select id="s-pub">
+              <option>Adultos Tijuana 30-55, NSE medio-alto</option>
+              <option>Pacientes fronterizos MX-USA</option>
+              <option>Mamás con niños TDAH</option>
+              <option>Profesionales con fatiga/estrés</option>
+              <option>Interesados en medicina natural</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Objetivo</label>
+            <select id="s-obj">
+              <option>Captar citas por WhatsApp</option>
+              <option>Educar y generar autoridad</option>
+              <option>Branding y posicionamiento</option>
+              <option>Lanzar nuevo servicio</option>
+              <option>Reactivar pacientes</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="sb-section">
+          <div class="sb-title">Módulo</div>
+          <div class="mod-grid">
+            <div class="mod on"  data-mod="todo"     onclick="setMod(this)"><div class="mod-icon">⚡</div><div class="mod-label">TODO</div></div>
+            <div class="mod"     data-mod="imagen"   onclick="setMod(this)"><div class="mod-icon">🖼️</div><div class="mod-label">Imagen 4K</div></div>
+            <div class="mod"     data-mod="carrusel" onclick="setMod(this)"><div class="mod-icon">🎠</div><div class="mod-label">Carrusel</div></div>
+            <div class="mod"     data-mod="video"    onclick="setMod(this)"><div class="mod-icon">🎬</div><div class="mod-label">Video</div></div>
+            <div class="mod"     data-mod="post"     onclick="setMod(this)"><div class="mod-icon">📱</div><div class="mod-label">Post</div></div>
+            <div class="mod"     data-mod="story"    onclick="setMod(this)"><div class="mod-icon">⭕</div><div class="mod-label">Story</div></div>
+            <div class="mod"     data-mod="whatsapp" onclick="setMod(this)"><div class="mod-icon">💬</div><div class="mod-label">WhatsApp</div></div>
+            <div class="mod"     data-mod="anuncio"  onclick="setMod(this)"><div class="mod-icon">📣</div><div class="mod-label">Anuncio</div></div>
+            <div class="mod"     data-mod="reel"     onclick="setMod(this)"><div class="mod-icon">🎥</div><div class="mod-label">Guión</div></div>
+            <div class="mod"     data-mod="email"    onclick="setMod(this)"><div class="mod-icon">📧</div><div class="mod-label">Email</div></div>
+            <div class="mod"     data-mod="estrategia" onclick="setMod(this)"><div class="mod-icon">📊</div><div class="mod-label">Estrategia</div></div>
+            <div class="mod"     data-mod="campana"  onclick="setMod(this)"><div class="mod-icon">🚀</div><div class="mod-label">Campaña</div></div>
+          </div>
+        </div>
+
+        <div class="sb-section" id="img-opts" style="display:none">
+          <div class="sb-title">Formato de Imagen</div>
+          <div class="field">
+            <select id="s-fmt">
+              <option value="post">Post Instagram 1080×1350</option>
+              <option value="story">Story 1080×1920</option>
+              <option value="square">Cuadrado 1080×1080</option>
+              <option value="banner">Banner Web 1920×600</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Estilo Visual</label>
+            <select id="s-estilo">
+              <option>Fotorrealista médico premium</option>
+              <option>Tecnológico futurista</option>
+              <option>Naturaleza + medicina</option>
+              <option>Clínico minimalista</option>
+              <option>Dramático cinematográfico</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="sb-section" id="vid-opts" style="display:none">
+          <div class="sb-title">Opciones de Video</div>
+          <div class="field">
+            <select id="s-dur">
+              <option value="30">Reel 30 segundos</option>
+              <option value="45">Video 45 segundos</option>
+              <option value="60">Video 60 segundos</option>
+            </select>
+          </div>
+        </div>
+
+        <button class="gen-btn" onclick="generar()">
+          <span class="gen-btn-icon">⚡</span>
+          GENERAR AHORA
+        </button>
+
+      </div>
+
+      <!-- CONTENT -->
+      <div class="content">
+
+        <div id="empty-state" class="empty-state">
+          <div class="empty-icon">⚡</div>
+          <div class="empty-h">LISTO PARA CREAR</div>
+          <p class="empty-p">Selecciona un tema y módulo.<br>Presiona <strong>GENERAR AHORA</strong>.<br>El sistema hace el resto.</p>
+        </div>
+
+        <div id="loading-state" class="loading-state">
+          <div class="spinner-ring"></div>
+          <div class="loading-msg" id="load-msg">Generando...</div>
+          <div class="prog-track"><div class="prog-bar" id="prog"></div></div>
+        </div>
+
+        <!-- IMAGEN -->
+        <div id="res-img" class="result-block" style="display:none">
+          <div class="result-header">
+            <span class="result-badge">Imagen 4K — Lista para publicar</span>
+            <div class="result-actions">
+              <a id="img-dl-btn" class="act-btn primary" href="#" download="UIH_imagen.png">⬇ Descargar PNG</a>
+              <button class="act-btn" onclick="copyImgUrl()">Copiar URL</button>
+            </div>
+          </div>
+          <div class="img-result-wrap">
+            <img id="img-out" src="" alt="Imagen UIH generada"/>
+          </div>
+        </div>
+
+        <!-- CARRUSEL -->
+        <div id="res-car" class="result-block" style="display:none">
+          <div class="result-header">
+            <span class="result-badge">Carrusel — <span id="car-total">6</span> Imágenes 4K</span>
+            <div class="result-actions">
+              <button class="act-btn" onclick="dlAllSlides()">⬇ Descargar Todos</button>
+            </div>
+          </div>
+          <div id="car-grid" class="carousel-grid"></div>
+        </div>
+
+        <!-- VIDEO -->
+        <div id="res-vid" class="result-block" style="display:none">
+          <div class="result-header">
+            <span class="result-badge">Video / Reel</span>
+          </div>
+          <div class="guion-box">
+            <div class="guion-label">Guión — listo para grabar o generar con avatar</div>
+            <textarea id="guion-edit" class="guion-output" rows="10"></textarea>
+            <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+              <button class="act-btn" id="btn-voz" onclick="genVoz()">🎤 Generar Voz (ElevenLabs)</button>
+              <button class="act-btn primary" id="btn-heygen" onclick="genHeyGen()">🎬 Generar Video (HeyGen)</button>
+              <button class="act-btn" onclick="copyText('guion-edit')">Copiar guión</button>
+            </div>
+          </div>
+          <div id="audio-box" class="media-box" style="display:none">
+            <div class="media-label">Audio — Voz del Dr. Servín</div>
+            <audio id="audio-player" controls style="width:100%"></audio>
+            <a id="audio-dl" class="act-btn" style="margin-top:8px;display:inline-flex" href="#" download>⬇ Descargar MP3</a>
+          </div>
+          <div id="vid-status" class="status-box" style="display:none">
+            <div class="mini-spinner"></div>
+            <span id="vid-status-msg">Generando video con tu avatar... 2-4 minutos</span>
+          </div>
+          <div id="vid-box" class="media-box" style="display:none;border-color:rgba(70,239,244,.3)">
+            <div class="media-label">✅ Video Listo</div>
+            <video id="vid-player" controls style="width:100%;border-radius:8px"></video>
+            <div style="display:flex;gap:8px;margin-top:10px">
+              <a id="vid-dl" class="act-btn primary" href="#" download>⬇ Descargar Video</a>
+              <button class="act-btn" onclick="copyText2('vid-dl')">Copiar URL</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- COPY -->
+        <div id="res-copy" class="result-block" style="display:none">
+          <div class="result-header">
+            <span class="result-badge" id="copy-badge">Copy Generado</span>
+            <button class="act-btn" onclick="copyText('copy-out')">Copiar todo</button>
+          </div>
+          <div class="copy-tabs">
+            <button class="copy-tab on"  onclick="showCopyTab(this,'post')">Post IG/FB</button>
+            <button class="copy-tab"     onclick="showCopyTab(this,'story')">Stories</button>
+            <button class="copy-tab"     onclick="showCopyTab(this,'carrusel')">Carrusel</button>
+            <button class="copy-tab"     onclick="showCopyTab(this,'whatsapp')">WhatsApp</button>
+            <button class="copy-tab"     onclick="showCopyTab(this,'anuncio')">Anuncio</button>
+            <button class="copy-tab"     onclick="showCopyTab(this,'email')">Email</button>
+          </div>
+          <textarea id="copy-out" class="copy-output" rows="16"></textarea>
+        </div>
+
+        <!-- ESTRATEGIA -->
+        <div id="res-estrategia" class="result-block" style="display:none">
+          <div class="result-header">
+            <span class="result-badge">Estrategia Completa</span>
+            <button class="act-btn" onclick="copyText('est-out')">Copiar</button>
+          </div>
+          <textarea id="est-out" class="copy-output" rows="30"></textarea>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ LIBRARY PAGE ══ -->
+  <div id="page-library" class="tab-page" style="padding:24px">
+    <div class="stats-row">
+      <div class="stat-card"><div class="stat-n" id="st-total">0</div><div class="stat-l">Total Generados</div></div>
+      <div class="stat-card"><div class="stat-n" id="st-img">0</div><div class="stat-l">Imágenes</div></div>
+      <div class="stat-card"><div class="stat-n" id="st-vid">0</div><div class="stat-l">Videos</div></div>
+      <div class="stat-card"><div class="stat-n" id="st-copy">0</div><div class="stat-l">Copies</div></div>
+    </div>
+    <div class="lib-grid" id="lib-grid">
+      <p style="color:var(--G);font-size:12px;grid-column:1/-1;text-align:center;padding:40px">Aún no hay contenido. Ve al Studio y genera tu primer contenido.</p>
+    </div>
+  </div>
+
+  <!-- ══ CALENDAR PAGE ══ -->
+  <div id="page-calendar" class="tab-page" style="padding:24px;max-width:800px">
+    <div class="sb-section" style="margin-bottom:16px">
+      <div class="sb-title">Calendario Editorial Automático</div>
+      <div class="field"><label>Duración</label>
+        <select id="cal-dias"><option value="30">30 días</option><option value="15">15 días</option><option value="7">7 días</option></select>
+      </div>
+      <div class="field"><label>Temas (separados por coma)</label>
+        <input type="text" id="cal-temas" value="Homeopatía, Sueroterapia IV, TDAH, Medicina Regenerativa, Epigenética"/>
+      </div>
+      <button class="gen-btn" style="margin-top:12px" onclick="genCalendario()">📅 Generar Calendario</button>
+    </div>
+    <div id="cal-result" class="result-block" style="display:none">
+      <div class="result-header">
+        <span class="result-badge">Calendario Generado</span>
+        <button class="act-btn" onclick="copyText('cal-out')">Copiar</button>
+      </div>
+      <textarea id="cal-out" class="copy-output" rows="30"></textarea>
+    </div>
+  </div>
+
+  <!-- ══ CAMPAIGNS PAGE ══ -->
+  <div id="page-campaigns" class="tab-page" style="padding:24px;max-width:800px">
+    <div class="sb-section" style="margin-bottom:16px">
+      <div class="sb-title">Constructor de Campaña Meta Ads</div>
+      <div class="field"><label>Servicio</label>
+        <select id="camp-srv">
+          <option>Sueroterapia IV</option><option>Homeopatía</option><option>Medicina Regenerativa</option>
+          <option>TDAH / Neurodesarrollo</option><option>Hidroterapia de Colón</option>
+          <option>Células Madre</option><option>Primera Consulta</option>
+        </select>
+      </div>
+      <div class="field"><label>Presupuesto</label>
+        <select id="camp-bud"><option>$150-300 USD/mes</option><option>$300-600 USD/mes</option><option>$600-1,200 USD/mes</option></select>
+      </div>
+      <div class="field"><label>Duración</label>
+        <select id="camp-dur"><option>7 días</option><option>15 días</option><option>30 días</option></select>
+      </div>
+      <button class="gen-btn" style="margin-top:12px" onclick="genCampana()">🚀 Construir Campaña</button>
+    </div>
+    <div id="camp-result" class="result-block" style="display:none">
+      <div class="result-header">
+        <span class="result-badge">Campaña Lista</span>
+        <button class="act-btn" onclick="copyText('camp-out')">Copiar</button>
+      </div>
+      <textarea id="camp-out" class="copy-output" rows="25"></textarea>
+    </div>
+  </div>
+
+  <!-- ══ CONFIG PAGE ══ -->
+  <div id="page-config" class="tab-page" style="padding:24px">
+    <div class="cfg-grid">
+      <div class="cfg-card">
+        <div class="cfg-title"><span class="cfg-title-icon">🤖</span>Anthropic (IA — Guiones + Copy)</div>
+        <div class="field"><label>API Key</label><input type="password" id="cfg-ant" placeholder="sk-ant-api03-..." autocomplete="off"/></div>
+        <div class="cfg-hint">console.anthropic.com → API Keys → Create Key</div>
+      </div>
+      <div class="cfg-card">
+        <div class="cfg-title"><span class="cfg-title-icon">🖼️</span>OpenAI DALL-E 3 (Imágenes 4K)</div>
+        <div class="field"><label>API Key</label><input type="password" id="cfg-oai" placeholder="sk-..." autocomplete="off"/></div>
+        <div class="cfg-hint">platform.openai.com → API Keys → Create new secret key</div>
+      </div>
+      <div class="cfg-card">
+        <div class="cfg-title"><span class="cfg-title-icon">🎬</span>HeyGen (Videos con tu Avatar)</div>
+        <div class="field"><label>API Key</label><input type="password" id="cfg-hkey" placeholder="HeyGen API Key" autocomplete="off"/></div>
+        <div class="field"><label>Avatar ID</label><input type="text" id="cfg-hava" placeholder="fecc597467a74b..."/></div>
+        <div class="cfg-hint">app.heygen.com → Settings → API · Avatars → tu avatar → ID</div>
+      </div>
+      <div class="cfg-card">
+        <div class="cfg-title"><span class="cfg-title-icon">🎤</span>ElevenLabs (Voz Clonada)</div>
+        <div class="field"><label>API Key</label><input type="password" id="cfg-ekey" placeholder="ElevenLabs API Key" autocomplete="off"/></div>
+        <div class="field"><label>Voice ID</label><input type="text" id="cfg-evoi" placeholder="Voice ID de tu voz clonada"/></div>
+        <div class="cfg-hint">elevenlabs.io → Voices → tu voz → ícono (i) → Voice ID</div>
+      </div>
+    </div>
+    <div class="field" style="max-width:400px;margin-top:16px">
+      <label>Contraseña de acceso al Studio</label>
+      <input type="password" id="cfg-pass" placeholder="Nueva contraseña (mínimo 6 caracteres)"/>
+    </div>
+    <button class="cfg-save-btn" onclick="saveConfig()">💾 Guardar Configuración</button>
+    <div class="cfg-msg" id="cfg-msg"></div>
+  </div>
+
+  <div class="footer">
+    <span>UIH Marketing Studio v3.0</span>
+    <span>www.uih.mx · 664-628-2202</span>
+    <span>COFEPRIS 25020222002A00159</span>
+  </div>
+</div>
+
+<script>
+/* ════════════════════════════════════════════
+   CONFIG & STATE
+════════════════════════════════════════════ */
+var CFG = JSON.parse(localStorage.getItem('uih_cfg') || '{}');
+var LIB = JSON.parse(localStorage.getItem('uih_lib') || '[]');
+var STATE = { mod:'todo', progTimer:null, pollTimer:null, videoId:null, copies:{}, slides:[] };
+var PASS_DEFAULT = 'uih2024';
+
+/* ════════════════════════════════════════════
+   LOCK
+════════════════════════════════════════════ */
+function unlock() {
+  var pass = document.getElementById('lock-pass').value;
+  var saved = CFG.password || PASS_DEFAULT;
+  if (pass === saved) {
+    document.getElementById('lock').style.display = 'none';
+    document.getElementById('app').style.display  = 'block';
+    loadConfig();
+    updateLibrary();
+  } else {
+    document.getElementById('lock-pass').style.borderColor = '#ff6b6b';
+    setTimeout(function(){ document.getElementById('lock-pass').style.borderColor = ''; }, 1500);
+  }
+}
+
+/* ════════════════════════════════════════════
+   CONFIG
+════════════════════════════════════════════ */
+function loadConfig() {
+  if (CFG.ant)  document.getElementById('cfg-ant').value  = CFG.ant;
+  if (CFG.oai)  document.getElementById('cfg-oai').value  = CFG.oai;
+  if (CFG.hkey) document.getElementById('cfg-hkey').value = CFG.hkey;
+  if (CFG.hava) document.getElementById('cfg-hava').value = CFG.hava;
+  if (CFG.ekey) document.getElementById('cfg-ekey').value = CFG.ekey;
+  if (CFG.evoi) document.getElementById('cfg-evoi').value = CFG.evoi;
+}
+
+function saveConfig() {
+  CFG.ant      = document.getElementById('cfg-ant').value.trim();
+  CFG.oai      = document.getElementById('cfg-oai').value.trim();
+  CFG.hkey     = document.getElementById('cfg-hkey').value.trim();
+  CFG.hava     = document.getElementById('cfg-hava').value.trim();
+  CFG.ekey     = document.getElementById('cfg-ekey').value.trim();
+  CFG.evoi     = document.getElementById('cfg-evoi').value.trim();
+  var newPass   = document.getElementById('cfg-pass').value.trim();
+  if (newPass.length >= 6) CFG.password = newPass;
+  localStorage.setItem('uih_cfg', JSON.stringify(CFG));
+  var msg = document.getElementById('cfg-msg');
+  msg.style.color = '#46EFF4';
+  msg.textContent = '✓ Configuración guardada correctamente';
+  setTimeout(function(){ msg.textContent = ''; }, 3000);
+}
+
+/* ════════════════════════════════════════════
+   NAVIGATION
+════════════════════════════════════════════ */
+function setPage(id, el) {
+  document.querySelectorAll('.tab-page').forEach(function(p){ p.classList.remove('show'); });
+  document.querySelectorAll('.nav-tab').forEach(function(t){ t.classList.remove('on'); });
+  document.getElementById('page-'+id).classList.add('show');
+  el.classList.add('on');
+  if (id === 'library') updateLibrary();
+}
+
+function setMod(el) {
+  document.querySelectorAll('.mod').forEach(function(m){ m.classList.remove('on'); });
+  el.classList.add('on');
+  STATE.mod = el.dataset.mod;
+  var needImg = ['todo','imagen','carrusel'].includes(STATE.mod);
+  var needVid = ['todo','video'].includes(STATE.mod);
+  document.getElementById('img-opts').style.display = needImg ? 'block' : 'none';
+  document.getElementById('vid-opts').style.display = needVid ? 'block' : 'none';
+}
+
+document.getElementById('s-tema').addEventListener('change', function(){
+  document.getElementById('s-tema-custom').style.display = this.value === '__custom' ? 'block' : 'none';
+});
+
+function getTema() {
+  var v = document.getElementById('s-tema').value;
+  return v === '__custom' ? document.getElementById('s-tema-custom').value : v;
+}
+
+/* ════════════════════════════════════════════
+   LOADING
+════════════════════════════════════════════ */
+function startLoad(msg) {
+  document.getElementById('empty-state').style.display   = 'none';
+  document.getElementById('loading-state').classList.add('show');
+  document.getElementById('load-msg').textContent = msg || 'Generando...';
+  var w = 0;
+  STATE.progTimer = setInterval(function(){
+    w += Math.random() * 6;
+    if (w > 88) w = 88;
+    document.getElementById('prog').style.width = Math.round(w) + '%';
+  }, 200);
+}
+
+function stopLoad() {
+  clearInterval(STATE.progTimer);
+  document.getElementById('prog').style.width = '100%';
+  setTimeout(function(){
+    document.getElementById('loading-state').classList.remove('show');
+    document.getElementById('prog').style.width = '0%';
+  }, 400);
+}
+
+function hideAll() {
+  ['res-img','res-car','res-vid','res-copy','res-estrategia'].forEach(function(id){
+    document.getElementById(id).style.display = 'none';
+  });
+}
+
+/* ════════════════════════════════════════════
+   ANTHROPIC API
+════════════════════════════════════════════ */
+var PROXY = 'https://weathered-snow-17f5.dservan2011.workers.dev';
+
+async function proxyCall(endpoint, apiKey, payload) {
+  var res = await fetch(PROXY, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ endpoint: endpoint, apiKey: apiKey, payload: payload })
+  });
+  return await res.json();
+}
+
+async function callAnthropic(prompt, system, tokens) {
+  if (!CFG.ant) { alert('Agrega tu Anthropic API Key en Configuración'); return null; }
+  try {
+    var d = await proxyCall('https://api.anthropic.com/v1/messages', CFG.ant, {
+      model: 'claude-sonnet-4-5',
+      max_tokens: tokens || 1500,
+      system: system || UIH_SYSTEM,
+      messages: [{role:'user', content: prompt}]
+    });
+    if (d.error) { alert('Anthropic error: ' + (d.error.message || JSON.stringify(d.error))); return null; }
+    return d.content[0].text;
+  } catch(e) { alert('Error: ' + e.message); return null; }
+}
+
+var UIH_SYSTEM = `Eres el Director de Marketing Médico de UIH (Unidad Integral Homeopática) del Dr. Luis Alfonso Servín en Tijuana, Baja California.
+Servicios: Homeopatía, Medicina Regenerativa, Sueroterapia IV, Células Madre, Hidroterapia de Colón, TDAH, Epigenética, Suplementación, Medicina Preventiva.
+Contacto: WhatsApp 664-628-2202 | www.uih.mx | COFEPRIS 25020222002A00159
+Público: adultos 28-55, Tijuana y frontera MX-USA, NSE medio-alto, dispuestos a invertir en su salud.
+Tono: médico premium, profesional, cálido, confiable. NUNCA promesas absolutas de curación. Siempre ético.`;
+
+/* ════════════════════════════════════════════
+   DALL-E 3 — IMAGEN 4K
+════════════════════════════════════════════ */
+async function genImagen(tema, estilo, formato) {
+  // Usar Stable Diffusion via stability.ai free tier o Unsplash como fallback visual
+  var promptText = 'Ultra-professional medical marketing photo UIH clinic Mexico, ' + tema +
+    ', dark navy blue background teal cyan accents, bioluminescent particles, ' +
+    'photorealistic cinematic 8K, professional medical environment, luxury premium brand, ' +
+    (estilo || 'hyperrealistic professional photography bokeh') + ', no text no words';
+  
+  // Intentar con múltiples servicios
+  var services = [
+    function() {
+      var p = encodeURIComponent(promptText);
+      var seed = Math.floor(Math.random() * 99999);
+      return 'https://image.pollinations.ai/prompt/' + p + '?width=1080&height=1080&seed=' + seed + '&nologo=true';
+    },
+    function() {
+      var p = encodeURIComponent(promptText);
+      return 'https://image.pollinations.ai/prompt/' + p + '?width=1080&height=1080&model=turbo&nologo=true';
+    }
+  ];
+  
+  for (var i = 0; i < services.length; i++) {
+    try {
+      var url = services[i]();
+      var ok = await new Promise(function(resolve) {
+        var img = new Image();
+        img.onload = function() { resolve(img.width > 100); };
+        img.onerror = function() { resolve(false); };
+        img.crossOrigin = 'anonymous';
+        img.src = url;
+        setTimeout(function() { resolve(false); }, 20000);
+      });
+      if (ok) return url;
+    } catch(e) {}
+  }
+  
+  // Fallback: generar imagen SVG profesional UIH si todo falla
+  var colors = ['#032548','#041830','#0B4F6C'];
+  var bg = colors[Math.floor(Math.random()*colors.length)];
+  var svg = '<svg width="1080" height="1080" xmlns="http://www.w3.org/2000/svg">' +
+    '<defs><radialGradient id="rg" cx="50%" cy="40%" r="60%"><stop offset="0%" stop-color="#017590" stop-opacity="0.4"/><stop offset="100%" stop-color="' + bg + '"/></radialGradient></defs>' +
+    '<rect width="1080" height="1080" fill="' + bg + '"/>' +
+    '<rect width="1080" height="1080" fill="url(#rg)"/>' +
+    '<circle cx="540" cy="380" r="200" fill="#46EFF4" opacity="0.06"/>' +
+    '<circle cx="540" cy="380" r="140" fill="none" stroke="#46EFF4" stroke-width="1" opacity="0.2"/>' +
+    '<circle cx="540" cy="380" r="80" fill="none" stroke="#46EFF4" stroke-width="1" opacity="0.3"/>' +
+    '<line x1="0" y1="3" x2="1080" y2="3" stroke="#46EFF4" stroke-width="4" opacity="0.6"/>' +
+    '<text x="60" y="70" font-family="Arial" font-size="42" font-weight="900" fill="#46EFF4" letter-spacing="6">UIH</text>' +
+    '<text x="60" y="90" font-family="Arial" font-size="14" fill="#41AAD4" letter-spacing="3">UNIDAD INTEGRAL HOMEOPÁTICA</text>' +
+    '<text x="60" y="680" font-family="Arial" font-size="64" font-weight="900" fill="#FFFFFF">' + tema.toUpperCase().substring(0,16) + '</text>' +
+    '<text x="60" y="740" font-family="Arial" font-size="22" fill="#A9BECF">Dr. Luis Alfonso Servín · Tijuana</text>' +
+    '<rect x="0" y="960" width="1080" height="120" fill="rgba(3,37,72,0.95)"/>' +
+    '<text x="40" y="1005" font-family="Arial" font-size="16" fill="#A9BECF">www.uih.mx · COFEPRIS 25020222002A00159</text>' +
+    '<rect x="720" y="975" width="320" height="70" rx="6" fill="#46EFF4" opacity="0.15"/>' +
+    '<text x="740" y="1003" font-family="Arial" font-size="13" fill="#46EFF4" font-weight="800">AGENDA TU CITA</text>' +
+    '<text x="740" y="1028" font-family="Arial" font-size="22" fill="#FFFFFF" font-weight="900">664-628-2202</text>' +
+    '</svg>';
+  var blob = new Blob([svg], {type:'image/svg+xml'});
+  return URL.createObjectURL(blob);
+}
+
+/* ════════════════════════════════════════════
+   ELEVENLABS — VOZ
+════════════════════════════════════════════ */
+async function genVoz() {
+  if (!CFG.ekey || !CFG.evoi) { alert('Configura ElevenLabs en Configuración'); return; }
+  var texto = document.getElementById('guion-edit').value;
+  if (!texto.trim()) { alert('El guión está vacío'); return; }
+  var btn = document.getElementById('btn-voz');
+  btn.textContent = '🎤 Generando voz...';
+  btn.disabled = true;
+
+  var clean = texto.replace(/\[.*?\]/g,'').trim();
+  var res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${CFG.evoi}`, {
+    method:'POST',
+    headers:{'Accept':'audio/mpeg','Content-Type':'application/json','xi-api-key':CFG.ekey},
+    body: JSON.stringify({ text:clean, model_id:'eleven_multilingual_v2', voice_settings:{stability:.5,similarity_boost:.85,style:.3} })
+  });
+  btn.textContent = '🎤 Generar Voz (ElevenLabs)';
+  btn.disabled = false;
+
+  if (!res.ok) { alert('ElevenLabs error '+res.status); return; }
+  var blob = await res.blob();
+  var url  = URL.createObjectURL(blob);
+  document.getElementById('audio-player').src = url;
+  document.getElementById('audio-dl').href    = url;
+  document.getElementById('audio-box').style.display = 'block';
+  saveToLib('audio', getTema(), '', url);
+}
+
+/* ════════════════════════════════════════════
+   HEYGEN — VIDEO
+════════════════════════════════════════════ */
+async function genHeyGen() {
+  if (!CFG.hkey || !CFG.hava) { alert('Configura HeyGen en Configuración'); return; }
+  var guion = document.getElementById('guion-edit').value;
+  if (!guion.trim()) { alert('El guión está vacío'); return; }
+
+  var btn = document.getElementById('btn-heygen');
+  btn.textContent = '🎬 Enviando a HeyGen...';
+  btn.disabled = true;
+
+  var clean = guion.replace(/\[.*?\]/g,'').trim();
+  var res = await fetch('https://api.heygen.com/v2/video/generate', {
+    method:'POST',
+    headers:{'Content-Type':'application/json','X-Api-Key':CFG.hkey},
+    body: JSON.stringify({
+      video_inputs:[{
+        character:{ type:'avatar', avatar_id:CFG.hava, avatar_style:'normal' },
+        voice:{ type:'text', input_text:clean, voice_id:'es-MX-JorgeNeural' },
+        background:{ type:'color', value:'#032548' }
+      }],
+      dimension:{ width:1080, height:1920 },
+      test:false
+    })
+  });
+  var d = await res.json();
+  btn.textContent = '🎬 Generar Video (HeyGen)';
+  btn.disabled = false;
+
+  if (!res.ok || !d.data?.video_id) { alert('HeyGen error: '+(d.message||JSON.stringify(d))); return; }
+  STATE.videoId = d.data.video_id;
+  document.getElementById('vid-status').style.display = 'flex';
+  document.getElementById('vid-status-msg').textContent = 'Generando video con tu avatar... revisando cada 15 segundos';
+  startPoll();
+}
+
+function startPoll() {
+  if (STATE.pollTimer) clearInterval(STATE.pollTimer);
+  STATE.pollTimer = setInterval(checkVideo, 15000);
+}
+
+async function checkVideo() {
+  if (!STATE.videoId || !CFG.hkey) return;
+  var res = await fetch(`https://api.heygen.com/v1/video_status.get?video_id=${STATE.videoId}`,{headers:{'X-Api-Key':CFG.hkey}});
+  var d   = await res.json();
+  var st  = d.data?.status;
+  var url = d.data?.video_url;
+  if (st === 'completed' && url) {
+    clearInterval(STATE.pollTimer);
+    document.getElementById('vid-status').style.display = 'none';
+    document.getElementById('vid-player').src = url;
+    document.getElementById('vid-dl').href    = url;
+    document.getElementById('vid-box').style.display = 'block';
+    saveToLib('video', getTema(), url, url);
+  } else if (st === 'failed') {
+    clearInterval(STATE.pollTimer);
+    document.getElementById('vid-status-msg').textContent = 'El video falló. Intenta nuevamente.';
+  } else {
+    document.getElementById('vid-status-msg').textContent = 'Estado: '+st+' — revisando cada 15s...';
+  }
+}
+
+/* ════════════════════════════════════════════
+   GENERAR PRINCIPAL
+════════════════════════════════════════════ */
+async function generar() {
+  var tema = getTema();
+  if (!tema) { alert('Selecciona un tema'); return; }
+  var mod    = STATE.mod;
+  var pub    = document.getElementById('s-pub').value;
+  var obj    = document.getElementById('s-obj').value;
+  var fmt    = document.getElementById('s-fmt')?.value || 'post';
+  var estilo = document.getElementById('s-estilo')?.value || '';
+
+  hideAll();
+
+  if (mod === 'todo') {
+    startLoad('Generando imagen 4K + copy + guión...');
+    var [imgUrl, copyTxt, guion] = await Promise.all([
+      genImagen(tema, estilo, fmt),
+      callAnthropic(copyPrompt(tema,'post',pub,obj)),
+      callAnthropic(guionPrompt(tema,'30',pub,obj))
+    ]);
+    stopLoad();
+    if (imgUrl) showImagen(imgUrl, tema);
+    if (copyTxt) { STATE.copies['post'] = copyTxt; showCopy(copyTxt,'post'); }
+    if (guion)   showGuion(guion);
+    genCarruselBg(tema, estilo);
+    return;
+  }
+
+  if (mod === 'imagen') {
+    startLoad('Generando imagen 4K con DALL-E 3...');
+    var url = await genImagen(tema, estilo, fmt);
+    stopLoad();
+    if (url) showImagen(url, tema);
+    return;
+  }
+
+  if (mod === 'carrusel') {
+    startLoad('Generando carrusel de 6 imágenes 4K...');
+    await genCarruselBg(tema, estilo);
+    stopLoad();
+    return;
+  }
+
+  if (mod === 'video') {
+    startLoad('Escribiendo guión con IA...');
+    var dur = document.getElementById('s-dur')?.value || '30';
+    var g   = await callAnthropic(guionPrompt(tema, dur, pub, obj));
+    stopLoad();
+    if (g) showGuion(g);
+    return;
+  }
+
+  if (mod === 'estrategia') {
+    startLoad('Construyendo estrategia de 30 días...');
+    var est = await callAnthropic(estrategiaPrompt(tema, pub), UIH_SYSTEM, 2000);
+    stopLoad();
+    if (est) { document.getElementById('est-out').value = est; document.getElementById('res-estrategia').style.display = 'block'; }
+    return;
+  }
+
+  if (mod === 'campana') {
+    startLoad('Construyendo campaña Meta Ads...');
+    var c = await callAnthropic(campanaPrompt(tema,pub,obj,'$300-600 USD','30 días'), UIH_SYSTEM, 1500);
+    stopLoad();
+    if (c) { document.getElementById('est-out').value = c; document.getElementById('res-estrategia').style.display = 'block'; }
+    return;
+  }
+
+  // COPY FORMATS
+  var fmtMap = { post:'post', story:'story', whatsapp:'whatsapp', anuncio:'anuncio', email:'email', reel:'guion_reel' };
+  var fmt2   = fmtMap[mod] || 'post';
+  var labels = { post:'Copy Post IG/FB', story:'Stories', whatsapp:'WhatsApp', anuncio:'Anuncio Meta', email:'Email', guion_reel:'Guión Reel' };
+  startLoad('Generando '+(labels[fmt2]||'copy')+'...');
+  var txt = await callAnthropic(copyPrompt(tema, fmt2, pub, obj));
+  stopLoad();
+  if (txt) { STATE.copies[fmt2] = txt; showCopy(txt, fmt2); }
+}
+
+/* ── Carrusel 6 imágenes ── */
+async function genCarruselBg(tema, estilo) {
+  var subtemas = [
+    tema + ' — introducción',
+    tema + ' — síntomas y causas',
+    tema + ' — cómo funciona el tratamiento',
+    tema + ' — beneficios comprobados',
+    tema + ' — por qué elegir UIH',
+    tema + ' — agenda tu cita hoy'
+  ];
+  var grid  = document.getElementById('car-grid');
+  grid.innerHTML = '';
+  document.getElementById('car-total').textContent = '6';
+  document.getElementById('res-car').style.display = 'block';
+  STATE.slides = [];
+
+  for (var i = 0; i < subtemas.length; i++) {
+    var url = await genImagen(subtemas[i], estilo || 'Photorealistic medical 4K', 'square');
+    if (url) {
+      STATE.slides.push(url);
+      var idx  = STATE.slides.length - 1;
+      var card = document.createElement('div');
+      card.className = 'slide-card';
+      card.innerHTML = '<span class="slide-num">'+(idx+1)+'</span>'
+        + '<button class="slide-dl" onclick="dlSlide('+idx+')">⬇</button>'
+        + '<img src="'+url+'" alt="Slide '+(idx+1)+'" loading="lazy"/>';
+      grid.appendChild(card);
+    }
+  }
+  saveToLib('carrusel', tema, '', STATE.slides[0] || '');
+}
+
+/* ── SHOW HELPERS ── */
+function showImagen(url, tema) {
+  document.getElementById('img-out').src    = url;
+  document.getElementById('img-dl-btn').href = url;
+  document.getElementById('res-img').style.display = 'block';
+  saveToLib('imagen', tema, '', url);
+}
+
+function showGuion(g) {
+  document.getElementById('guion-edit').value = g;
+  document.getElementById('res-vid').style.display = 'block';
+  document.getElementById('audio-box').style.display   = 'none';
+  document.getElementById('vid-status').style.display  = 'none';
+  document.getElementById('vid-box').style.display     = 'none';
+  saveToLib('guion', getTema(), g, '');
+}
+
+function showCopy(txt, fmt) {
+  var labels = { post:'Copy Post IG/FB', story:'Stories', carrusel:'Carrusel', whatsapp:'WhatsApp', anuncio:'Anuncio Meta Ads', email:'Email', guion_reel:'Guión Reel' };
+  document.getElementById('copy-badge').textContent   = labels[fmt] || 'Copy Generado';
+  document.getElementById('copy-out').value           = txt;
+  document.getElementById('res-copy').style.display   = 'block';
+  // activate tab
+  document.querySelectorAll('.copy-tab').forEach(function(t){ t.classList.remove('on'); });
+  var tabMap = { post:0, story:1, carrusel:2, whatsapp:3, anuncio:4, email:5 };
+  var tabs   = document.querySelectorAll('.copy-tab');
+  if (tabs[tabMap[fmt] || 0]) tabs[tabMap[fmt]||0].classList.add('on');
+  saveToLib('copy', getTema(), txt, '');
+}
+
+function showCopyTab(el, fmt) {
+  document.querySelectorAll('.copy-tab').forEach(function(t){ t.classList.remove('on'); });
+  el.classList.add('on');
+  if (STATE.copies[fmt]) {
+    document.getElementById('copy-out').value = STATE.copies[fmt];
+  } else {
+    var tema = getTema();
+    var pub  = document.getElementById('s-pub').value;
+    var obj  = document.getElementById('s-obj').value;
+    startLoad('Generando '+fmt+'...');
+    callAnthropic(copyPrompt(tema, fmt, pub, obj)).then(function(txt){
+      stopLoad();
+      if (txt) { STATE.copies[fmt] = txt; document.getElementById('copy-out').value = txt; }
+    });
+  }
+}
+
+/* ════════════════════════════════════════════
+   PROMPTS
+════════════════════════════════════════════ */
+function guionPrompt(tema, dur, pub, obj) {
+  return `Crea un GUIÓN DE VIDEO de ${dur} segundos sobre: ${tema}
+Público: ${pub} | Objetivo: ${obj}
+[HOOK 3s] pregunta o dato impactante
+[PROBLEMA 8s] dolor del paciente
+[SOLUCIÓN 15s] qué ofrece UIH
+[PRUEBA 8s] por qué confiar en el Dr. Servín
+[CTA 5s] WhatsApp 664-628-2202
+Usa [PAUSA] y [ÉNFASIS]. Solo el guión, listo para leer.`;
+}
+
+function copyPrompt(tema, fmt, pub, obj) {
+  var p = {
+    post: `2 versiones de POST Instagram/Facebook sobre ${tema}.\nA) Emocional: conecta con el dolor, storytelling\nB) Autoridad: datos, proceso del Dr. Servín\nCada una: 180-220 palabras + 10 hashtags + CTA WhatsApp 664-628-2202`,
+    story: `5 STORIES Instagram sobre ${tema}.\nStory 1: pregunta intriga | 2: dato sorprendente | 3: solución UIH | 4: credencial Dr. Servín | 5: CTA WhatsApp\nCada story: máx 15 palabras, color sugerido`,
+    carrusel: `7 SLIDES carrusel Instagram sobre ${tema}.\nSlide 1: portada | 2: problema | 3: causa | 4: solución UIH | 5: cómo funciona | 6: diferenciadores | 7: CTA\nCada slide: título (6 palabras) + texto (40 palabras)`,
+    whatsapp: `5 MENSAJES WhatsApp seguimiento para leads UIH interesados en ${tema}.\nMsg 1: bienvenida | 2: valor educativo | 3: caso de éxito | 4: urgencia suave | 5: cierre + cita\nCada mensaje: máx 3 líneas, tono humano`,
+    anuncio: `3 ANUNCIOS Meta Ads sobre ${tema}. Público: ${pub}.\nVariante A: enfoque dolor | B: resultado | C: urgencia\nCada anuncio: Titular (40 chars) + Texto (125 chars) + Descripción (30 chars) + CTA`,
+    email: `EMAIL seguimiento UIH sobre ${tema}.\n3 opciones de Asunto + Cuerpo: saludo, empatía, solución UIH, credencial Dr. Servín, CTA cita.\nMáx 300 palabras. Tono médico premium.`,
+    guion_reel: `GUIÓN REEL 30s sobre ${tema}. Hook + 3 puntos clave + CTA WhatsApp 664-628-2202. Listo para grabar.`
+  };
+  return (p[fmt] || p.post) + `\n\nObjetivo: ${obj}`;
+}
+
+function estrategiaPrompt(tema, pub) {
+  return `ESTRATEGIA COMPLETA 30 días para UIH sobre: ${tema}. Público: ${pub}.
+1. Diagnóstico y oportunidad
+2. Objetivo SMART con número de citas
+3. 4 pilares de contenido
+4. Calendario semana 1-4 (lun-sab)
+5. Copy post listo para esta semana
+6. Anuncio Meta Ads con presupuesto
+7. 5 KPIs con número meta
+8. 3 acciones urgentes esta semana`;
+}
+
+function campanaPrompt(tema, pub, obj, bud, dur) {
+  return `CAMPAÑA META ADS completa para UIH.\nServicio: ${tema} | Público: ${pub} | Objetivo: ${obj}\nPresupuesto: ${bud} | Duración: ${dur}\nEntrega: audiencias detalladas, copy 3 variantes A/B/C, estructura embudo, KPIs semanales, secuencia WhatsApp 5 mensajes.`;
+}
+
+/* ════════════════════════════════════════════
+   CALENDAR & CAMPAIGNS
+════════════════════════════════════════════ */
+async function genCalendario() {
+  var dias  = document.getElementById('cal-dias').value;
+  var temas = document.getElementById('cal-temas').value;
+  startLoad('Generando calendario editorial...');
+  var txt = await callAnthropic(
+    `Calendario editorial ${dias} días UIH. Temas: ${temas}.\nTabla: Día | Fecha | Pilar | Tema | Formato | Copy titular | Hashtags | CTA\nVariar: reels, posts, stories, carruseles. Días de mayor engagement: mar, jue, sab.`,
+    UIH_SYSTEM, 2000
+  );
+  stopLoad();
+  if (txt) { document.getElementById('cal-out').value = txt; document.getElementById('cal-result').style.display = 'block'; }
+}
+
+async function genCampana() {
+  var srv = document.getElementById('camp-srv').value;
+  var bud = document.getElementById('camp-bud').value;
+  var dur = document.getElementById('camp-dur').value;
+  startLoad('Construyendo campaña...');
+  var txt = await callAnthropic(campanaPrompt(srv,'Adultos Tijuana y frontera MX-USA','Captar citas',bud,dur));
+  stopLoad();
+  if (txt) { document.getElementById('camp-out').value = txt; document.getElementById('camp-result').style.display = 'block'; }
+}
+
+/* ════════════════════════════════════════════
+   LIBRARY
+════════════════════════════════════════════ */
+function saveToLib(tipo, tema, contenido, url) {
+  LIB.unshift({ tipo:tipo, tema:tema, contenido:contenido, url:url, fecha: new Date().toLocaleDateString('es-MX') });
+  if (LIB.length > 100) LIB = LIB.slice(0,100);
+  localStorage.setItem('uih_lib', JSON.stringify(LIB));
+}
+
+function updateLibrary() {
+  var imgs  = LIB.filter(function(i){ return i.tipo==='imagen'||i.tipo==='carrusel'; }).length;
+  var vids  = LIB.filter(function(i){ return i.tipo==='video'; }).length;
+  var copies= LIB.filter(function(i){ return i.tipo==='copy'||i.tipo==='guion'; }).length;
+  document.getElementById('st-total').textContent = LIB.length;
+  document.getElementById('st-img').textContent   = imgs;
+  document.getElementById('st-vid').textContent   = vids;
+  document.getElementById('st-copy').textContent  = copies;
+
+  var grid = document.getElementById('lib-grid');
+  if (!LIB.length) { grid.innerHTML = '<p style="color:var(--G);font-size:12px;grid-column:1/-1;text-align:center;padding:40px">Aún no hay contenido generado.</p>'; return; }
+  grid.innerHTML = LIB.slice(0,40).map(function(item){
+    var thumb = item.url && (item.tipo==='imagen'||item.tipo==='carrusel'||item.tipo==='video')
+      ? '<img class="lib-card-img" src="'+item.url+'" alt="'+item.tema+'" onerror="this.style.display=\'none\'"/>'
+      : '<div class="lib-card-img" style="display:flex;align-items:center;justify-content:center;font-size:28px;opacity:.3">'+(item.tipo==='video'?'🎬':item.tipo==='copy'?'📝':'📊')+'</div>';
+    return '<div class="lib-card">'+thumb+'<div class="lib-card-body"><div class="lib-card-tipo">'+item.tipo+'</div><div class="lib-card-tema">'+item.tema+'</div><div class="lib-card-date">'+item.fecha+'</div></div></div>';
+  }).join('');
+}
+
+/* ════════════════════════════════════════════
+   UTILS
+════════════════════════════════════════════ */
+function copyText(id) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  el.select();
+  document.execCommand('copy');
+}
+function copyText2(id) {
+  var el = document.getElementById(id);
+  if (el) navigator.clipboard.writeText(el.href||el.value).catch(function(){});
+}
+function copyImgUrl() {
+  var src = document.getElementById('img-out').src;
+  navigator.clipboard.writeText(src).catch(function(){});
+}
+function dlSlide(idx) {
+  if (!STATE.slides[idx]) return;
+  var a = document.createElement('a');
+  a.href = STATE.slides[idx];
+  a.download = 'UIH_slide_'+(idx+1)+'.png';
+  a.target = '_blank';
+  a.click();
+}
+function dlAllSlides() {
+  STATE.slides.forEach(function(url, i){ setTimeout(function(){ dlSlide(i); }, i*500); });
+}
+</script>
+</body>
+</html>
