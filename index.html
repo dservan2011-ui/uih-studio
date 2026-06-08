@@ -552,6 +552,13 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
    CONFIG & STATE
 ════════════════════════════════════════════ */
 var CFG = JSON.parse(localStorage.getItem('uih_cfg') || '{}');
+// Cargar keys del servidor si no están en local
+if (!CFG.ant)  CFG.ant  = '__ANT__';
+if (!CFG.oai)  CFG.oai  = '__OAI__';
+if (!CFG.hkey) CFG.hkey = '__HKEY__';
+if (!CFG.hava) CFG.hava = '__HAVA__';
+if (!CFG.ekey) CFG.ekey = '__EKEY__';
+if (!CFG.evoi) CFG.evoi = '__EVOI__';
 var LIB = JSON.parse(localStorage.getItem('uih_lib') || '[]');
 var STATE = { mod:'todo', progTimer:null, pollTimer:null, videoId:null, copies:{}, slides:[] };
 var PASS_DEFAULT = 'uih2024';
@@ -806,7 +813,7 @@ async function genHeyGen() {
     body: JSON.stringify({
       video_inputs:[{
         character:{ type:'avatar', avatar_id:CFG.hava, avatar_style:'normal' },
-        voice:{ type:'text', input_text:clean, voice_id:'es-MX-JorgeNeural' },
+        voice:{ type:'text', input_text:clean, voice_id:'CFG.evoi },
         background:{ type:'color', value:'#032548' }
       }],
       dimension:{ width:1080, height:1920 },
