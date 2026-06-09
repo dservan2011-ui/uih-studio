@@ -13,6 +13,7 @@ import { fileURLToPath } from "url";
 // ── Rutas de API ──────────────────────────────────────────────────────────────
 import { textToVoice, pollVideoStatus } from "./api/videoGenerator.js";
 import { generateBrandedImage }         from "./api/branding.js";
+import { generateCampaign }             from "./api/campaignGenerator.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app  = express();
@@ -131,6 +132,40 @@ app.post("/api/generate/video-full", async (req, res) => {
     res.json({ ok: true, video_id: videoData.data.video_id });
   } catch (err) {
     console.error("[UIH/video-full]", err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+// ── POST /api/generate/campaign ───────────────────────────────────────────────
+app.post("/api/generate/campaign", async (req, res) => {
+  try {
+    const {
+      theme,
+      service,
+      objective,
+      audience,
+      location,
+      module = "TODO",
+    } = req.body;
+
+    if (!theme) {
+      return res.status(400).json({ error: "Falta el campo 'theme'." });
+    }
+
+    const campaign = await generateCampaign({
+      theme,
+      service,
+      objective,
+      audience,
+      location,
+      module,
+    });
+
+    res.json({
+      ok: true,
+      campaign,
+    });
+  } catch (err) {
+    console.error("[UIH/campaign]", err.message);
     res.status(500).json({ error: err.message });
   }
 });
