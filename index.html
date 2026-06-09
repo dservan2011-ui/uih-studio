@@ -1385,4 +1385,210 @@ async function generar() {
     alert('Error conectando con el generador UIH: ' + err.message);
   }
 }
+  /* ════════════════════════════════════════════
+   UIH CAMPAIGN AI — MOTOR OPENAI CORREGIDO
+   Reemplaza la función generar() anterior.
+════════════════════════════════════════════ */
+
+function uihServiceFromTema(tema) {
+  var t = String(tema || '').toLowerCase();
+
+  if (t.includes('suero') || t.includes('iv')) return 'Sueros intravenosos';
+  if (t.includes('regenerativa') || t.includes('célula') || t.includes('celula')) return 'Células madre / medicina regenerativa';
+  if (t.includes('hidro')) return 'Hidroterapia de colon';
+  if (t.includes('epigen')) return 'Estudio de epigenética con cabello';
+  if (t.includes('video')) return 'Consulta por videollamada';
+  if (t.includes('nebul')) return 'Nebulización';
+  if (t.includes('neural') || t.includes('dolor')) return 'Terapia neural';
+  if (t.includes('consulta') || t.includes('homeopat')) return 'Consulta de primera vez';
+
+  return 'Consulta de primera vez';
+}
+
+function uihCarouselToText(slides) {
+  if (!Array.isArray(slides)) return '';
+
+  return slides.map(function(s) {
+    return 'SLIDE ' + s.slide + '\n' +
+      String(s.heading || '').toUpperCase() + '\n' +
+      String(s.body || '');
+  }).join('\n\n');
+}
+
+function uihBuildMainCopy(c) {
+  var hashtags = Array.isArray(c.hashtags) ? c.hashtags.join(' ') : '';
+
+  return [
+    'TÍTULO:',
+    c.campaign?.title || '',
+    '',
+    'SUBTÍTULO:',
+    c.campaign?.subtitle || '',
+    '',
+    'COPY PRINCIPAL:',
+    c.campaign?.main_copy || '',
+    '',
+    'COPY CORTO:',
+    c.campaign?.short_copy || '',
+    '',
+    'INSTAGRAM:',
+    c.captions?.instagram || '',
+    '',
+    'FACEBOOK:',
+    c.captions?.facebook || '',
+    '',
+    'TIKTOK:',
+    c.captions?.tiktok || '',
+    '',
+    'YOUTUBE SHORTS:',
+    c.captions?.youtube || '',
+    '',
+    'CARRUSEL:',
+    uihCarouselToText(c.carousel),
+    '',
+    'WHATSAPP:',
+    c.whatsapp || '',
+    '',
+    'ANUNCIO META:',
+    'Texto: ' + (c.ads?.primary_text || ''),
+    'Titular: ' + (c.ads?.headline || ''),
+    'Descripción: ' + (c.ads?.description || ''),
+    '',
+    'HASHTAGS:',
+    hashtags,
+    '',
+    'DISCLAIMER:',
+    c.disclaimer || '',
+    '',
+    'PROMPT IMAGEN 4K:',
+    c.image_prompt || '',
+    '',
+    'PROMPT HEYGEN:',
+    c.heygen_prompt || '',
+    '',
+    'TEXTO ELEVENLABS:',
+    c.elevenlabs_script || '',
+    '',
+    'REVISIÓN DE SEGURIDAD:',
+    (c.safety_review?.status || 'aprobado') + ' — ' + (c.safety_review?.notes || '')
+  ].join('\n');
+}
+
+function uihBuildStrategyText(c) {
+  return [
+    'ESTRATEGIA UIH',
+    '',
+    'Resumen:',
+    c.strategy?.summary || '',
+    '',
+    'Ángulo:',
+    c.strategy?.angle || '',
+    '',
+    'Público:',
+    c.strategy?.audience || '',
+    '',
+    'Objetivo:',
+    c.strategy?.objective || '',
+    '',
+    'CTA:',
+    c.strategy?.cta || '',
+    '',
+    'Título de campaña:',
+    c.campaign?.title || '',
+    '',
+    'Subtítulo:',
+    c.campaign?.subtitle || '',
+    '',
+    'Disclaimer:',
+    c.disclaimer || '',
+    '',
+    'Revisión de seguridad:',
+    (c.safety_review?.status || 'aprobado') + ' — ' + (c.safety_review?.notes || '')
+  ].join('\n');
+}
+
+async function generar() {
+  var tema = getTema();
+  if (!tema) {
+    alert('Selecciona o escribe un tema.');
+    return;
+  }
+
+  var mod = STATE.mod || 'todo';
+  var pub = document.getElementById('s-pub').value;
+  var obj = document.getElementById('s-obj').value;
+  var service = uihServiceFromTema(tema);
+
+  hideAll();
+  startLoad('Generando campaña UIH con OpenAI...');
+
+  try {
+    var res = await fetch('https://uih-studio-api.onrender.com/api/generate/campaign', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        theme: tema,
+        service: service,
+        objective: obj,
+        audience: pub,
+        location: 'Tijuana / San Diego / San Ysidro / California / Phoenix',
+        module: mod.toUpperCase()
+      })
+    });
+
+    var raw = await res.text();
+    var data = {};
+
+    try {
+      data = raw ? JSON.parse(raw) : {};
+    } catch (jsonError) {
+      throw new Error('La API no respondió JSON válido. Respuesta: ' + raw.slice(0, 300));
+    }
+
+    stopLoad();
+
+    if (!res.ok || !data.ok) {
+      alert('Error al generar campaña: ' + (data.error || 'Error desconocido'));
+      return;
+    }
+
+    var c = data.campaign;
+
+    STATE.copies = {};
+    STATE.copies.post = (c.captions?.instagram || '') + '\n\n' + (c.captions?.facebook || '');
+    STATE.copies.story = 'Historias sugeridas:\n\n' + uihCarouselToText(c.carousel);
+    STATE.copies.carrusel = uihCarouselToText(c.carousel);
+    STATE.copies.whatsapp = c.whatsapp || '';
+    STATE.copies.anuncio =
+      'Texto: ' + (c.ads?.primary_text || '') + '\n' +
+      'Titular: ' + (c.ads?.headline || '') + '\n' +
+      'Descripción: ' + (c.ads?.description || '');
+    STATE.copies.email =
+      'Asunto sugerido: Información de UIH — ' + tema + '\n\n' +
+      (c.campaign?.main_copy || '') + '\n\n' +
+      'Agenda tu cita: 664-628-2202\nwww.uih.mx';
+
+    document.getElementById('copy-badge').textContent = 'Campaña UIH generada por OpenAI';
+    document.getElementById('copy-out').value = uihBuildMainCopy(c);
+    document.getElementById('res-copy').style.display = 'block';
+
+    document.getElementById('est-out').value = uihBuildStrategyText(c);
+    document.getElementById('res-estrategia').style.display = 'block';
+
+    var script = c.elevenlabs_script || c.reel?.script || '';
+    if (script) {
+      document.getElementById('guion-edit').value = script;
+      document.getElementById('res-vid').style.display = 'block';
+      document.getElementById('audio-box').style.display = 'none';
+      document.getElementById('vid-status').style.display = 'none';
+      document.getElementById('vid-box').style.display = 'none';
+    }
+
+    saveToLib('campaña', tema, uihBuildMainCopy(c), '');
+
+  } catch (err) {
+    stopLoad();
+    alert('Error conectando con el generador UIH: ' + err.message);
+  }
+}
 </script>
