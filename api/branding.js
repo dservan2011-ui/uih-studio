@@ -1,23 +1,34 @@
 /**
  * api/branding.js — UIH Studio
- * Superpone logo UIH y foto del Dr. Servín sobre imágenes generadas por OpenAI.
+ * Genera imágenes con OpenAI y aplica branding institucional UIH.
  */
 
 import sharp from "sharp";
-import path  from "path";
-import fs    from "fs/promises";
+import path from "path";
+import fs from "fs/promises";
 import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const ASSETS    = path.resolve(__dirname, "../assets");
+const ASSETS = path.resolve(__dirname, "../assets");
+
+async function fileExists(filePath) {
+  try {
+    await fs.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 async function circularCrop(imagePath, diameter) {
-  const r   = Math.floor(diameter / 2);
+  const r = Math.floor(diameter / 2);
+
   const mask = Buffer.from(
     `<svg viewBox="0 0 ${diameter} ${diameter}" xmlns="http://www.w3.org/2000/svg">
-       <circle cx="${r}" cy="${r}" r="${r}" fill="white"/>
-     </svg>`
+      <circle cx="${r}" cy="${r}" r="${r}" fill="white"/>
+    </svg>`
   );
+
   return sharp(imagePath)
     .resize(diameter, diameter, { fit: "cover", position: "top" })
     .composite([{ input: mask, blend: "dest-in" }])
@@ -25,63 +36,159 @@ async function circularCrop(imagePath, diameter) {
     .toBuffer();
 }
 
-function watermarkSVG(width, height) {
-  const fontSize = Math.max(14, Math.round(width * 0.016));
+function footerSVG(width, height) {
+  const footerH = Math.round(height * 0.13);
+  const y = height - footerH;
+
   return Buffer.from(
     `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
-       <text x="${width / 2}" y="${height - 16}"
-         text-anchor="middle"
-         font-family="Arial, sans-serif"
-         font-size="${fontSize}"
-         fill="white"
-         opacity="0.22"
-       >UIH — Unidad Integral Homeopática · uih-studio.onrender.com</text>
-     </svg>`
+      <defs>
+        <linearGradient id="footerGrad" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stop-color="#032548" stop-opacity="0.96"/>
+          <stop offset="55%" stop-color="#0B4F6C" stop-opacity="0.92"/>
+          <stop offset="100%" stop-color="#017590" stop-opacity="0.90"/>
+        </linearGradient>
+      </defs>
+
+      <rect x="0" y="${y}" width="${width}" height="${footerH}" fill="url(#footerGrad)"/>
+
+      <text x="${Math.round(width * 0.055)}" y="${y + Math.round(footerH * 0.38)}"
+        font-family="Arial, sans-serif"
+        font-size="${Math.round(width * 0.026)}"
+        font-weight="800"
+        fill="#FFFFFF"
+        letter-spacing="2">
+        www.uih.mx
+      </text>
+
+      <text x="${Math.round(width * 0.055)}" y="${y + Math.round(footerH * 0.67)}"
+        font-family="Arial, sans-serif"
+        font-size="${Math.round(width * 0.019)}"
+        font-weight="700"
+        fill="#A9BECF"
+        letter-spacing="1">
+        COFEPRIS 25020222002A00159
+      </text>
+
+      <text x="${Math.round(width * 0.63)}" y="${y + Math.round(footerH * 0.36)}"
+        font-family="Arial, sans-serif"
+        font-size="${Math.round(width * 0.019)}"
+        font-weight="800"
+        fill="#46EFF4"
+        letter-spacing="2">
+        AGENDA TU CITA
+      </text>
+
+      <text x="${Math.round(width * 0.63)}" y="${y + Math.round(footerH * 0.72)}"
+        font-family="Arial, sans-serif"
+        font-size="${Math.round(width * 0.034)}"
+        font-weight="900"
+        fill="#FFFFFF">
+        664-628-2202
+      </text>
+    </svg>`
+  );
+}
+
+function subtleWatermarkSVG(width, height) {
+  return Buffer.from(
+    `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
+      <text x="${width / 2}" y="${height / 2}"
+        text-anchor="middle"
+        dominant-baseline="middle"
+        font-family="Arial, sans-serif"
+        font-size="${Math.round(width * 0.16)}"
+        font-weight="900"
+        fill="#46EFF4"
+        opacity="0.045"
+        letter-spacing="12">
+        UIH
+      </text>
+    </svg>`
   );
 }
 
 export async function applyUIHBranding(input, outputPath, opts = {}) {
   const {
-    includeLogo      = true,
-    includeDoctor    = true,
+    includeLogo = true,
+    includeDoctor = true,
+    includeFooter = true,
     includeWatermark = true,
   } = opts;
 
-  const base              = sharp(input);
+  const base = sharp(input).png();
   const { width, height } = await base.metadata();
-  const layers            = [];
+  const layers = [];
+
+  if (includeWatermark) {
+    layers.push({
+      input: subtleWatermarkSVG(width, height),
+      top: 0,
+      left: 0,
+    });
+  }
 
   if (includeLogo) {
     const logoFile = path.join(ASSETS, "logo-uih.png");
-    const logoW    = Math.round(width * 0.12);
-    const margin   = Math.round(width * 0.02);
-    const logoBuf  = await sharp(logoFile).resize(logoW, null, { fit: "inside" }).toBuffer();
-    const logoMeta = await sharp(logoBuf).metadata();
-    layers.push({
-      input: logoBuf,
-      top:   height - logoMeta.height - margin,
-      left:  width  - logoMeta.width  - margin,
-    });
+
+    if (await fileExists(logoFile)) {
+      const logoW = Math.round(width * 0.20);
+      const margin = Math.round(width * 0.055);
+
+      const logoBuf = await sharp(logoFile)
+        .resize(logoW, null, { fit: "inside" })
+        .png()
+        .toBuffer();
+
+      layers.push({
+        input: logoBuf,
+        top: margin,
+        left: margin,
+      });
+    } else {
+      console.warn("[UIH/branding] No existe assets/logo-uih.png. Se omite logo.");
+    }
   }
 
   if (includeDoctor) {
     const doctorFile = path.join(ASSETS, "dr-servin.png");
-    const size       = Math.round(width * 0.07);
-    const margin     = Math.round(width * 0.015);
-    const border     = 4;
-    const borderBuf  = Buffer.from(
-      `<svg viewBox="0 0 ${size + border * 2} ${size + border * 2}" xmlns="http://www.w3.org/2000/svg">
-         <circle cx="${size/2 + border}" cy="${size/2 + border}" r="${size/2 + border}"
-                 fill="white" opacity="0.9"/>
-       </svg>`
-    );
-    const doctorBuf = await circularCrop(doctorFile, size);
-    layers.push({ input: borderBuf, top: margin - border, left: margin - border });
-    layers.push({ input: doctorBuf, top: margin,          left: margin          });
+
+    if (await fileExists(doctorFile)) {
+      const size = Math.round(width * 0.13);
+      const margin = Math.round(width * 0.045);
+      const border = 6;
+
+      const borderBuf = Buffer.from(
+        `<svg viewBox="0 0 ${size + border * 2} ${size + border * 2}" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="${size / 2 + border}" cy="${size / 2 + border}" r="${size / 2 + border}" fill="#F6FBFB" opacity="0.95"/>
+          <circle cx="${size / 2 + border}" cy="${size / 2 + border}" r="${size / 2 + border - 2}" fill="none" stroke="#46EFF4" stroke-width="3" opacity="0.9"/>
+        </svg>`
+      );
+
+      const doctorBuf = await circularCrop(doctorFile, size);
+
+      layers.push({
+        input: borderBuf,
+        top: margin - border,
+        left: width - size - margin - border,
+      });
+
+      layers.push({
+        input: doctorBuf,
+        top: margin,
+        left: width - size - margin,
+      });
+    } else {
+      console.warn("[UIH/branding] No existe assets/dr-servin.png. Se omite foto del doctor.");
+    }
   }
 
-  if (includeWatermark) {
-    layers.push({ input: watermarkSVG(width, height), top: 0, left: 0 });
+  if (includeFooter) {
+    layers.push({
+      input: footerSVG(width, height),
+      top: 0,
+      left: 0,
+    });
   }
 
   const result = await base.composite(layers).png().toBuffer();
@@ -89,7 +196,7 @@ export async function applyUIHBranding(input, outputPath, opts = {}) {
   if (outputPath) {
     await fs.mkdir(path.dirname(outputPath), { recursive: true });
     await fs.writeFile(outputPath, result);
-    console.log(`[UIH] ✓ Imagen guardada: ${outputPath}`);
+    console.log(`[UIH/branding] Imagen guardada: ${outputPath}`);
   }
 
   return result;
@@ -97,19 +204,49 @@ export async function applyUIHBranding(input, outputPath, opts = {}) {
 
 export async function generateBrandedImage(prompt, outputPath) {
   const { default: OpenAI } = await import("openai");
-  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-  console.log("[UIH] Generando imagen con OpenAI gpt-image-1...");
-  const response = await openai.images.generate({
-    model:   "gpt-image-1",
-    prompt:  `${prompt}. Estilo médico profesional, alta resolución, composición limpia.`,
-    size:    "1792x1024",
-    quality: "high",
-    n:       1,
+  if (!process.env.OPENAI_API_KEY) {
+    throw new Error("Falta OPENAI_API_KEY en Render.");
+  }
+
+  const openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
   });
 
-  const imageBuffer = Buffer.from(response.data[0].b64_json, "base64");
+  const finalPrompt = `
+${prompt}
 
-  console.log("[UIH] Aplicando branding UIH...");
-  return applyUIHBranding(imageBuffer, outputPath);
+Crear imagen médica premium para UIH — Unidad Integral Homeopática.
+Estilo clínico moderno, elegante, profesional, con tonos navy, teal y aqua.
+Luz fría, alto contraste, sensación de confianza médica, tecnología y atención humana.
+No usar texto dentro de la imagen base. El sistema agregará branding institucional después.
+Evitar imágenes exageradas, irreales o sensacionalistas.
+`;
+
+  console.log("[UIH/image] Generando imagen con OpenAI...");
+
+  const response = await openai.images.generate({
+    model: "gpt-image-1",
+    prompt: finalPrompt,
+    size: "1024x1536",
+    quality: "high",
+    n: 1,
+  });
+
+  const b64 = response?.data?.[0]?.b64_json;
+
+  if (!b64) {
+    throw new Error("OpenAI no devolvió imagen en base64.");
+  }
+
+  const imageBuffer = Buffer.from(b64, "base64");
+
+  console.log("[UIH/image] Aplicando branding UIH...");
+
+  return applyUIHBranding(imageBuffer, outputPath, {
+    includeLogo: true,
+    includeDoctor: true,
+    includeFooter: true,
+    includeWatermark: true,
+  });
 }
