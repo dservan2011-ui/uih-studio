@@ -1,12 +1,13 @@
 /**
  * api/branding.js — UIH Studio
- * Genera imagen con OpenAI y luego superpone branding UIH:
- * - Logo UIH
- * - Foto real del Dr. Servín
- * - Panel informativo profesional
- * - CTA
- *
- * Pensado para posts verticales tipo Instagram 1080x1350 aprox.
+ * Versión corregida:
+ * - NO genera doctores inventados
+ * - NO genera pacientes
+ * - NO genera resonadores, tomógrafos, quirófanos ni equipo que UIH no usa
+ * - NO genera texto dentro de la imagen base
+ * - Usa foto real del Dr. Servín
+ * - Usa logo real UIH
+ * - Si existe foto real del consultorio, la usa primero
  */
 
 import sharp from "sharp";
@@ -15,30 +16,26 @@ import fs from "fs/promises";
 import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const ASSETS = path.resolve(__dirname, "../uih-assets");
 
-/**
- * Busca assets primero en /uih-assets y luego en /assets
- * porque en tu repo ahorita los subiste a uih-assets.
- */
-async function resolveAsset(filename) {
-  const candidates = [
-    path.resolve(__dirname, "../uih-assets", filename),
-    path.resolve(__dirname, "../assets", filename),
-  ];
+const OUTPUT_WIDTH = 1024;
+const OUTPUT_HEIGHT = 1536;
 
-  for (const file of candidates) {
-    try {
-      await fs.access(file);
-      return file;
-    } catch (_) {}
+async function fileExists(filePath) {
+  try {
+    await fs.access(filePath);
+    return true;
+  } catch {
+    return false;
   }
-
-  throw new Error(`No se encontró el asset: ${filename}`);
 }
 
-/* ────────────────────────────────────────────────────────────── */
-/* Helpers                                                       */
-/* ────────────────────────────────────────────────────────────── */
+async function findFirstExisting(files) {
+  for (const file of files) {
+    if (await fileExists(file)) return file;
+  }
+  return null;
+}
 
 function escapeXML(str = "") {
   return String(str)
@@ -56,6 +53,7 @@ function splitText(text = "", maxChars = 28) {
 
   for (const word of words) {
     const test = current ? `${current} ${word}` : word;
+
     if (test.length <= maxChars) {
       current = test;
     } else {
@@ -68,15 +66,6 @@ function splitText(text = "", maxChars = 28) {
   return lines;
 }
 
-function fitBulletLines(items = [], maxChars = 34, maxLinesPerBullet = 2) {
-  const out = [];
-  for (const item of items) {
-    const lines = splitText(item, maxChars).slice(0, maxLinesPerBullet);
-    out.push(lines);
-  }
-  return out;
-}
-
 async function circularCrop(imagePath, diameter) {
   const r = Math.floor(diameter / 2);
 
@@ -87,419 +76,454 @@ async function circularCrop(imagePath, diameter) {
   );
 
   return sharp(imagePath)
-    .resize(diameter, diameter, { fit: "cover", position: "top" })
+    .rotate()
+    .resize(diameter, diameter, {
+      fit: "cover",
+      position: "top",
+    })
     .composite([{ input: mask, blend: "dest-in" }])
     .png()
     .toBuffer();
 }
 
 function inferCopyFromPrompt(prompt = "") {
-  const p = prompt.toLowerCase();
+  const p = String(prompt || "").toLowerCase();
 
-  if (p.includes("consulta de primera vez")) {
+  if (p.includes("primera vez") || p.includes("homeopatía personalizada") || p.includes("homeopatia personalizada")) {
     return {
       title: "CONSULTA DE PRIMERA VEZ",
-      subtitle: "Atención médica integral, personalizada y profesional.",
+      subtitle: "Atención médica integral y personalizada.",
       bullets: [
         "Historia clínica completa",
         "Escáner intersticial",
         "Medicamento homeopático por un mes",
-        "Seguimiento personalizado",
+        "Seguimiento médico personalizado",
       ],
       ctaLabel: "Agenda tu cita",
-      ctaPhone: "664-628-2202",
     };
   }
 
-  if (p.includes("subsecuente")) {
-    return {
-      title: "CONSULTA SUBSECUENTE",
-      subtitle: "Seguimiento médico para continuar tu programa de atención.",
-      bullets: [
-        "Valoración de evolución",
-        "Ajuste de tratamiento",
-        "Seguimiento personalizado",
-      ],
-      ctaLabel: "Agenda tu seguimiento",
-      ctaPhone: "664-628-2202",
-    };
-  }
-
-  if (p.includes("epigenetica") || p.includes("epigenética")) {
+  if (p.includes("epigen")) {
     return {
       title: "ESTUDIO EPIGENÉTICO",
-      subtitle: "Valoración con muestra de cabello para apoyo en tu plan integral.",
+      subtitle: "Valoración complementaria con muestra de cabello.",
       bullets: [
         "Adultos, niños y deportistas",
-        "Enfoque complementario",
         "Orientación personalizada",
+        "Apoyo para plan integral",
       ],
       ctaLabel: "Solicita información",
-      ctaPhone: "664-628-2202",
     };
   }
 
-  if (p.includes("suero") || p.includes("intravenoso")) {
+  if (p.includes("suero") || p.includes("iv") || p.includes("intravenoso")) {
     return {
       title: "SUEROS INTRAVENOSOS",
-      subtitle: "Aplicación bajo valoración médica previa y enfoque seguro.",
+      subtitle: "Aplicación bajo valoración médica previa.",
       bullets: [
-        "Vitaminados",
-        "Apoyo desinflamatorio",
+        "Protocolos personalizados",
         "Opciones según valoración",
+        "Supervisión médica",
       ],
       ctaLabel: "Solicita valoración",
-      ctaPhone: "664-628-2202",
     };
   }
 
-  if (p.includes("video llamada") || p.includes("videollamada")) {
-    return {
-      title: "CONSULTA POR VIDEOLLAMADA",
-      subtitle: "Una alternativa cómoda y segura para pacientes que no pueden acudir.",
-      bullets: [
-        "Historia clínica completa",
-        "Revisión de resultados",
-        "Plan de tratamiento y seguimiento",
-      ],
-      ctaLabel: "Agenda por WhatsApp",
-      ctaPhone: "664-628-2202",
-    };
-  }
-
-  if (p.includes("hidroterapia de colon")) {
+  if (p.includes("hidroterapia") || p.includes("colon")) {
     return {
       title: "HIDROTERAPIA DE COLON",
-      subtitle: "Procedimiento realizado bajo valoración y respeto médico.",
+      subtitle: "Procedimiento con equipo especializado.",
       bullets: [
-        "Equipo especializado",
-        "Procedimiento guiado",
         "Valoración previa indispensable",
+        "Atención profesional",
+        "Seguimiento médico",
       ],
       ctaLabel: "Pide informes",
-      ctaPhone: "664-628-2202",
     };
   }
 
-  if (p.includes("terapia neural")) {
+  if (p.includes("regenerativa") || p.includes("células madre") || p.includes("celulas madre")) {
     return {
-      title: "TERAPIA NEURAL",
-      subtitle: "Enfoque complementario aplicado bajo valoración médica.",
+      title: "MEDICINA REGENERATIVA",
+      subtitle: "Enfoque médico individualizado bajo valoración.",
       bullets: [
-        "Valoración individual",
-        "Atención profesional",
-        "Seguimiento personalizado",
+        "Valoración médica previa",
+        "Plan personalizado",
+        "Seguimiento profesional",
       ],
       ctaLabel: "Solicita valoración",
-      ctaPhone: "664-628-2202",
+    };
+  }
+
+  if (p.includes("videollamada") || p.includes("video llamada")) {
+    return {
+      title: "CONSULTA POR VIDEOLLAMADA",
+      subtitle: "Atención médica para pacientes a distancia.",
+      bullets: [
+        "Historia clínica completa",
+        "Revisión de estudios",
+        "Plan y seguimiento",
+      ],
+      ctaLabel: "Agenda por WhatsApp",
     };
   }
 
   return {
     title: "ATENCIÓN MÉDICA INTEGRAL",
-    subtitle: "Enfoque profesional, ético y personalizado para cada paciente.",
+    subtitle: "Enfoque profesional, ético y personalizado.",
     bullets: [
       "Valoración médica completa",
-      "Tratamiento individualizado",
+      "Plan individualizado",
       "Seguimiento personalizado",
     ],
     ctaLabel: "Agenda tu cita",
-    ctaPhone: "664-628-2202",
   };
 }
 
-function buildOverlaySVG(width, height, data = {}) {
-  const {
-    title = "ATENCIÓN MÉDICA INTEGRAL",
-    subtitle = "Enfoque profesional, ético y personalizado para cada paciente.",
-    bullets = [],
-    ctaLabel = "Agenda tu cita",
-    ctaPhone = "664-628-2202",
-    website = "www.uih.mx",
-    cofepris = "COFEPRIS 25020222002A00159",
-  } = data;
+function clinicOverlaySVG(width, height) {
+  return Buffer.from(
+    `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="shade" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#032548" stop-opacity="0.20"/>
+          <stop offset="55%" stop-color="#032548" stop-opacity="0.04"/>
+          <stop offset="100%" stop-color="#032548" stop-opacity="0.42"/>
+        </linearGradient>
+      </defs>
+      <rect x="0" y="0" width="${width}" height="${height}" fill="url(#shade)"/>
+    </svg>`
+  );
+}
 
-  const titleLines = splitText(title, 24).slice(0, 2);
-  const subtitleLines = splitText(subtitle, 40).slice(0, 3);
-  const bulletLines = fitBulletLines(bullets, 34, 2);
+function infoPanelSVG(width, height, data) {
+  const titleLines = splitText(data.title, 24).slice(0, 2);
+  const subtitleLines = splitText(data.subtitle, 42).slice(0, 2);
+  const bullets = Array.isArray(data.bullets) ? data.bullets.slice(0, 4) : [];
 
-  const leftPad = Math.round(width * 0.06);
-  const panelH = Math.round(height * 0.28);
+  const panelH = Math.round(height * 0.31);
   const panelY = height - panelH;
+  const padX = Math.round(width * 0.055);
+  const titleSize = Math.round(width * 0.041);
+  const subtitleSize = Math.round(width * 0.023);
+  const bulletSize = Math.round(width * 0.020);
 
-  const logoBoxX = leftPad;
-  const textX = leftPad;
-  let cursorY = panelY + 60;
+  let y = panelY + Math.round(width * 0.075);
 
-  let titleSvg = "";
+  let titleSVG = "";
   for (const line of titleLines) {
-    titleSvg += `
-      <text x="${textX}" y="${cursorY}"
+    titleSVG += `
+      <text x="${padX}" y="${y}"
         font-family="Arial, Helvetica, sans-serif"
-        font-size="${Math.round(width * 0.040)}"
-        font-weight="700"
-        fill="#FFFFFF">${escapeXML(line)}</text>
+        font-size="${titleSize}"
+        font-weight="900"
+        fill="#FFFFFF"
+        letter-spacing="1">
+        ${escapeXML(line)}
+      </text>
     `;
-    cursorY += Math.round(width * 0.050);
+    y += Math.round(width * 0.052);
   }
 
-  cursorY += 8;
+  y += Math.round(width * 0.012);
 
-  let subtitleSvg = "";
+  let subtitleSVG = "";
   for (const line of subtitleLines) {
-    subtitleSvg += `
-      <text x="${textX}" y="${cursorY}"
+    subtitleSVG += `
+      <text x="${padX}" y="${y}"
         font-family="Arial, Helvetica, sans-serif"
-        font-size="${Math.round(width * 0.022)}"
-        font-weight="400"
-        fill="#D9EEF6">${escapeXML(line)}</text>
+        font-size="${subtitleSize}"
+        font-weight="500"
+        fill="#D9EEF6">
+        ${escapeXML(line)}
+      </text>
     `;
-    cursorY += Math.round(width * 0.030);
+    y += Math.round(width * 0.033);
   }
 
-  cursorY += 12;
+  y += Math.round(width * 0.018);
 
-  let bulletsSvg = "";
-  const bulletFont = Math.round(width * 0.020);
-  const bulletGap = Math.round(width * 0.028);
-
-  for (const group of bulletLines.slice(0, 4)) {
-    const first = group[0] || "";
-    bulletsSvg += `
-      <circle cx="${textX + 8}" cy="${cursorY - 5}" r="4" fill="#46EFF4"/>
-      <text x="${textX + 24}" y="${cursorY}"
+  let bulletSVG = "";
+  for (const bullet of bullets) {
+    bulletSVG += `
+      <circle cx="${padX + 8}" cy="${y - 6}" r="4" fill="#46EFF4"/>
+      <text x="${padX + 26}" y="${y}"
         font-family="Arial, Helvetica, sans-serif"
-        font-size="${bulletFont}"
-        fill="#FFFFFF">${escapeXML(first)}</text>
+        font-size="${bulletSize}"
+        font-weight="600"
+        fill="#FFFFFF">
+        ${escapeXML(bullet)}
+      </text>
     `;
-    cursorY += bulletGap;
-
-    if (group[1]) {
-      bulletsSvg += `
-        <text x="${textX + 24}" y="${cursorY}"
-          font-family="Arial, Helvetica, sans-serif"
-          font-size="${bulletFont}"
-          fill="#FFFFFF">${escapeXML(group[1])}</text>
-      `;
-      cursorY += bulletGap;
-    }
+    y += Math.round(width * 0.034);
   }
 
-  const ctaW = Math.round(width * 0.28);
-  const ctaH = Math.round(height * 0.075);
-  const ctaX = width - ctaW - leftPad;
-  const ctaY = height - ctaH - Math.round(height * 0.035);
+  const ctaW = Math.round(width * 0.31);
+  const ctaH = Math.round(height * 0.070);
+  const ctaX = width - ctaW - padX;
+  const ctaY = height - ctaH - Math.round(height * 0.050);
 
-  return Buffer.from(`
-    <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">
+  return Buffer.from(
+    `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
       <defs>
         <linearGradient id="panelGrad" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stop-color="#032548" stop-opacity="0.92"/>
-          <stop offset="100%" stop-color="#0B4F6C" stop-opacity="0.88"/>
+          <stop offset="0%" stop-color="#032548" stop-opacity="0.95"/>
+          <stop offset="60%" stop-color="#0B4F6C" stop-opacity="0.92"/>
+          <stop offset="100%" stop-color="#017590" stop-opacity="0.88"/>
         </linearGradient>
-
         <linearGradient id="ctaGrad" x1="0" y1="0" x2="1" y2="1">
           <stop offset="0%" stop-color="#017590"/>
           <stop offset="100%" stop-color="#41AAD4"/>
         </linearGradient>
       </defs>
 
-      <!-- Sombra superior ligera -->
-      <rect x="0" y="${panelY - 20}" width="${width}" height="${panelH + 20}" fill="url(#panelGrad)"/>
+      <rect x="0" y="${panelY}" width="${width}" height="${panelH}" fill="url(#panelGrad)"/>
+      <rect x="${padX}" y="${panelY + 28}" width="${Math.round(width * 0.18)}" height="6" rx="3" fill="#46EFF4"/>
 
-      <!-- Línea de acento -->
-      <rect x="${leftPad}" y="${panelY + 26}" width="${Math.round(width * 0.18)}" height="6" rx="3" fill="#46EFF4"/>
+      ${titleSVG}
+      ${subtitleSVG}
+      ${bulletSVG}
 
-      ${titleSvg}
-      ${subtitleSvg}
-      ${bulletsSvg}
-
-      <!-- CTA -->
       <rect x="${ctaX}" y="${ctaY}" width="${ctaW}" height="${ctaH}" rx="18" fill="url(#ctaGrad)"/>
       <text x="${ctaX + ctaW / 2}" y="${ctaY + 34}"
         text-anchor="middle"
         font-family="Arial, Helvetica, sans-serif"
-        font-size="${Math.round(width * 0.020)}"
-        font-weight="700"
-        fill="#FFFFFF">${escapeXML(ctaLabel.toUpperCase())}</text>
-
-      <text x="${ctaX + ctaW / 2}" y="${ctaY + 68}"
+        font-size="${Math.round(width * 0.019)}"
+        font-weight="800"
+        fill="#FFFFFF">
+        ${escapeXML(String(data.ctaLabel || "Agenda tu cita").toUpperCase())}
+      </text>
+      <text x="${ctaX + ctaW / 2}" y="${ctaY + 70}"
         text-anchor="middle"
         font-family="Arial, Helvetica, sans-serif"
-        font-size="${Math.round(width * 0.030)}"
-        font-weight="700"
-        fill="#FFFFFF">${escapeXML(ctaPhone)}</text>
+        font-size="${Math.round(width * 0.031)}"
+        font-weight="900"
+        fill="#FFFFFF">
+        664-628-2202
+      </text>
 
-      <!-- Footer -->
-      <text x="${leftPad}" y="${height - 28}"
+      <text x="${padX}" y="${height - 34}"
         font-family="Arial, Helvetica, sans-serif"
-        font-size="${Math.round(width * 0.016)}"
-        fill="#B8D4E0">${escapeXML(website)}</text>
+        font-size="${Math.round(width * 0.017)}"
+        font-weight="700"
+        fill="#B8D4E0">
+        www.uih.mx
+      </text>
 
-      <text x="${leftPad}" y="${height - 8}"
+      <text x="${padX}" y="${height - 12}"
         font-family="Arial, Helvetica, sans-serif"
         font-size="${Math.round(width * 0.012)}"
-        fill="#9EC0CF">${escapeXML(cofepris)}</text>
-    </svg>
-  `);
+        font-weight="600"
+        fill="#9EC0CF">
+        COFEPRIS 25020222002A00159
+      </text>
+    </svg>`
+  );
 }
 
-/* ────────────────────────────────────────────────────────────── */
-/* Branding principal                                            */
-/* ────────────────────────────────────────────────────────────── */
+async function createBaseFromRealClinicPhoto() {
+  const clinicFile = await findFirstExisting([
+    path.join(ASSETS, "consultorio-1.jpg"),
+    path.join(ASSETS, "consultorio-1.jpeg"),
+    path.join(ASSETS, "consultorio-1.png"),
+    path.join(ASSETS, "consultorio.jpg"),
+    path.join(ASSETS, "consultorio.jpeg"),
+    path.join(ASSETS, "consultorio.png"),
+  ]);
+
+  if (!clinicFile) return null;
+
+  console.log(`[UIH/image] Usando foto real del consultorio: ${clinicFile}`);
+
+  const base = await sharp(clinicFile)
+    .rotate()
+    .resize(OUTPUT_WIDTH, OUTPUT_HEIGHT, {
+      fit: "cover",
+      position: "center",
+    })
+    .modulate({
+      brightness: 0.94,
+      saturation: 0.92,
+    })
+    .sharpen({ sigma: 0.5 })
+    .png()
+    .toBuffer();
+
+  return sharp(base)
+    .composite([
+      {
+        input: clinicOverlaySVG(OUTPUT_WIDTH, OUTPUT_HEIGHT),
+        top: 0,
+        left: 0,
+      },
+    ])
+    .png()
+    .toBuffer();
+}
+
+async function createSafeBaseWithOpenAI(prompt) {
+  const { default: OpenAI } = await import("openai");
+
+  if (!process.env.OPENAI_API_KEY) {
+    throw new Error("Falta OPENAI_API_KEY en Render.");
+  }
+
+  const openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+  });
+
+  const safePrompt = `
+Crear una imagen vertical realista para fondo publicitario de UIH.
+
+SOLO FONDO DE CONSULTORIO.
+NO personas.
+NO doctores.
+NO pacientes.
+NO caras.
+NO cuerpos.
+NO manos.
+NO texto.
+NO letras.
+NO títulos.
+NO logotipos inventados.
+NO resonador magnético.
+NO tomógrafo.
+NO MRI.
+NO CT scan.
+NO rayos X.
+NO quirófano.
+NO laboratorio futurista.
+NO hologramas.
+NO ciencia ficción.
+NO equipo hospitalario que no sea de consultorio.
+
+Escena permitida:
+consultorio médico realista, sobrio, humano, limpio y ordenado,
+pared neutra, escritorio médico, silla de paciente, silla médica,
+elementos simples de oficina clínica, iluminación natural o clínica suave,
+estética parecida a un consultorio real en Tijuana,
+toques discretos de azul marino, teal y blanco,
+sin verse lujoso irreal ni tecnológico exagerado.
+
+Debe quedar espacio limpio para colocar textos y branding encima.
+Fotografía realista editorial, no render 3D.
+`;
+
+  console.log("[UIH/image] Generando fondo seguro sin personas ni equipo falso...");
+
+  const response = await openai.images.generate({
+    model: "gpt-image-1",
+    prompt: safePrompt,
+    size: "1024x1536",
+    quality: "high",
+    n: 1,
+  });
+
+  const b64 = response?.data?.[0]?.b64_json;
+
+  if (!b64) {
+    throw new Error("OpenAI no devolvió imagen en base64.");
+  }
+
+  return Buffer.from(b64, "base64");
+}
 
 export async function applyUIHBranding(input, outputPath, opts = {}) {
-  const defaults = inferCopyFromPrompt(opts.prompt || "");
+  const prompt = opts.prompt || "";
+  const copy = inferCopyFromPrompt(prompt);
 
-  const settings = {
-    includeLogo: true,
-    includeDoctor: true,
-    includeOverlay: true,
-    title: opts.title || defaults.title,
-    subtitle: opts.subtitle || defaults.subtitle,
-    bullets: opts.bullets || defaults.bullets,
-    ctaLabel: opts.ctaLabel || defaults.ctaLabel,
-    ctaPhone: opts.ctaPhone || defaults.ctaPhone,
-    website: opts.website || "www.uih.mx",
-    cofepris: opts.cofepris || "COFEPRIS 25020222002A00159",
-    ...opts,
-  };
+  const baseBuffer = await sharp(input)
+    .rotate()
+    .resize(OUTPUT_WIDTH, OUTPUT_HEIGHT, {
+      fit: "cover",
+      position: "center",
+    })
+    .png()
+    .toBuffer();
 
-  const base = sharp(input);
-  const meta = await base.metadata();
-
-  const width = meta.width || 1024;
-  const height = meta.height || 1536;
+  const base = sharp(baseBuffer);
+  const { width, height } = await base.metadata();
 
   const layers = [];
 
-  /* Logo */
-  if (settings.includeLogo) {
-    const logoFile = await resolveAsset("logo-uih.png");
+  const logoFile = path.join(ASSETS, "logo-uih.png");
+  if (await fileExists(logoFile)) {
     const logoW = Math.round(width * 0.18);
-    const margin = Math.round(width * 0.05);
+    const margin = Math.round(width * 0.055);
 
     const logoBuf = await sharp(logoFile)
-      .resize(logoW, logoW, { fit: "contain" })
+      .rotate()
+      .resize(logoW, logoW, {
+        fit: "contain",
+        withoutEnlargement: true,
+      })
       .png()
       .toBuffer();
 
     layers.push({
       input: logoBuf,
-      left: margin,
       top: margin,
+      left: margin,
     });
   }
 
-  /* Foto doctor */
-  if (settings.includeDoctor) {
-    const doctorFile = await resolveAsset("dr-servin.png");
-
-    const size = Math.round(width * 0.20); // antes estaba muy chica
-    const margin = Math.round(width * 0.05);
-    const border = Math.max(6, Math.round(width * 0.006));
+  const doctorFile = path.join(ASSETS, "dr-servin.png");
+  if (await fileExists(doctorFile)) {
+    const size = Math.round(width * 0.23);
+    const margin = Math.round(width * 0.045);
+    const border = Math.max(8, Math.round(width * 0.006));
+    const borderSize = size + border * 2;
 
     const doctorBuf = await circularCrop(doctorFile, size);
 
-    const borderBuf = Buffer.from(`
-      <svg width="${size + border * 2}" height="${size + border * 2}" viewBox="0 0 ${size + border * 2} ${size + border * 2}" xmlns="http://www.w3.org/2000/svg">
-        <circle
-          cx="${(size + border * 2) / 2}"
-          cy="${(size + border * 2) / 2}"
-          r="${size / 2 + border - 1}"
-          fill="#FFFFFF"
-          opacity="0.95"
-        />
-        <circle
-          cx="${(size + border * 2) / 2}"
-          cy="${(size + border * 2) / 2}"
-          r="${size / 2 + border - 5}"
-          fill="none"
-          stroke="#46EFF4"
-          stroke-width="4"
-          opacity="0.95"
-        />
-      </svg>
-    `);
+    const borderBuf = Buffer.from(
+      `<svg width="${borderSize}" height="${borderSize}" viewBox="0 0 ${borderSize} ${borderSize}" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="${borderSize / 2}" cy="${borderSize / 2}" r="${borderSize / 2}" fill="#F6FBFB" opacity="0.98"/>
+        <circle cx="${borderSize / 2}" cy="${borderSize / 2}" r="${borderSize / 2 - 5}" fill="none" stroke="#46EFF4" stroke-width="4" opacity="0.95"/>
+        <circle cx="${borderSize / 2}" cy="${borderSize / 2}" r="${borderSize / 2 - 12}" fill="none" stroke="#017590" stroke-width="2" opacity="0.65"/>
+      </svg>`
+    );
 
-    const left = width - size - border * 2 - margin;
+    const left = width - borderSize - margin;
     const top = margin;
 
     layers.push({
       input: borderBuf,
-      left,
       top,
+      left,
     });
 
     layers.push({
       input: doctorBuf,
-      left: left + border,
       top: top + border,
+      left: left + border,
     });
   }
 
-  /* Panel con texto */
-  if (settings.includeOverlay) {
-    const overlaySvg = buildOverlaySVG(width, height, settings);
-    layers.push({
-      input: overlaySvg,
-      left: 0,
-      top: 0,
-    });
-  }
+  layers.push({
+    input: infoPanelSVG(width, height, copy),
+    top: 0,
+    left: 0,
+  });
 
   const result = await base.composite(layers).png().toBuffer();
 
   if (outputPath) {
     await fs.mkdir(path.dirname(outputPath), { recursive: true });
     await fs.writeFile(outputPath, result);
-    console.log(`[UIH] ✓ Imagen guardada: ${outputPath}`);
+    console.log(`[UIH/branding] Imagen guardada: ${outputPath}`);
   }
 
   return result;
 }
 
-/* ────────────────────────────────────────────────────────────── */
-/* Generación de imagen con OpenAI                               */
-/* ────────────────────────────────────────────────────────────── */
-
 export async function generateBrandedImage(prompt, outputPath, opts = {}) {
-  const { default: OpenAI } = await import("openai");
+  let imageBuffer = await createBaseFromRealClinicPhoto();
 
-  if (!process.env.OPENAI_API_KEY) {
-    throw new Error("Falta OPENAI_API_KEY en variables de entorno.");
+  if (!imageBuffer) {
+    imageBuffer = await createSafeBaseWithOpenAI(prompt);
   }
 
-  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-
-  const enhancedPrompt = `
-${prompt}
-
-Genera una imagen fotográfica vertical, muy realista y profesional.
-Debe verse como consultorio médico real, elegante y humano.
-Evita estilo futurista, ciencia ficción, luces exageradas o render 3D.
-Usa ambiente clínico real, limpio, profesional y cálido.
-Paleta visual acorde a UIH: navy, teal, aqua, blanco.
-Si aparece un consultorio, que se vea moderno pero realista.
-Si aparece personal médico, que luzca profesional y natural.
-Deja espacio visual limpio en la parte inferior para agregar información comercial.
-No incrustes títulos publicitarios dentro de la escena.
-Calidad alta, composición premium, apariencia editorial.
-`;
-
-  console.log("[UIH] Generando imagen con OpenAI...");
-
-  const response = await openai.images.generate({
-    model: "gpt-image-1",
-    prompt: enhancedPrompt,
-    size: "1024x1536",
-    quality: "high",
-    n: 1,
-  });
-
-  const imageBuffer = Buffer.from(response.data[0].b64_json, "base64");
-
-  console.log("[UIH] Aplicando branding UIH...");
+  console.log("[UIH/image] Aplicando branding UIH seguro...");
 
   return applyUIHBranding(imageBuffer, outputPath, {
     ...opts,
