@@ -1,6 +1,7 @@
 /**
  * api/branding.js — UIH Studio
  * Genera imágenes con OpenAI y aplica branding institucional UIH.
+ * Usa logo real UIH y foto real del Dr. Servín desde /uih-assets.
  */
 
 import sharp from "sharp";
@@ -146,7 +147,7 @@ export async function applyUIHBranding(input, outputPath, opts = {}) {
         left: margin,
       });
     } else {
-      console.warn("[UIH/branding] No existe assets/logo-uih.png. Se omite logo.");
+      console.warn("[UIH/branding] No existe uih-assets/logo-uih.png. Se omite logo.");
     }
   }
 
@@ -154,14 +155,16 @@ export async function applyUIHBranding(input, outputPath, opts = {}) {
     const doctorFile = path.join(ASSETS, "dr-servin.png");
 
     if (await fileExists(doctorFile)) {
-      const size = Math.round(width * 0.13);
-      const margin = Math.round(width * 0.045);
-      const border = 6;
+      const size = Math.round(width * 0.22);
+      const margin = Math.round(width * 0.035);
+      const border = Math.max(8, Math.round(width * 0.006));
+      const borderSize = size + border * 2;
 
       const borderBuf = Buffer.from(
-        `<svg viewBox="0 0 ${size + border * 2} ${size + border * 2}" xmlns="http://www.w3.org/2000/svg">
-          <circle cx="${size / 2 + border}" cy="${size / 2 + border}" r="${size / 2 + border}" fill="#F6FBFB" opacity="0.95"/>
-          <circle cx="${size / 2 + border}" cy="${size / 2 + border}" r="${size / 2 + border - 2}" fill="none" stroke="#46EFF4" stroke-width="3" opacity="0.9"/>
+        `<svg viewBox="0 0 ${borderSize} ${borderSize}" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="${borderSize / 2}" cy="${borderSize / 2}" r="${borderSize / 2}" fill="#F6FBFB" opacity="0.98"/>
+          <circle cx="${borderSize / 2}" cy="${borderSize / 2}" r="${borderSize / 2 - 4}" fill="none" stroke="#46EFF4" stroke-width="4" opacity="0.95"/>
+          <circle cx="${borderSize / 2}" cy="${borderSize / 2}" r="${borderSize / 2 - 10}" fill="none" stroke="#017590" stroke-width="2" opacity="0.65"/>
         </svg>`
       );
 
@@ -170,16 +173,16 @@ export async function applyUIHBranding(input, outputPath, opts = {}) {
       layers.push({
         input: borderBuf,
         top: margin - border,
-        left: width - size - margin - border,
+        left: width - borderSize - margin,
       });
 
       layers.push({
         input: doctorBuf,
         top: margin,
-        left: width - size - margin,
+        left: width - size - margin - border,
       });
     } else {
-      console.warn("[UIH/branding] No existe assets/dr-servin.png. Se omite foto del doctor.");
+      console.warn("[UIH/branding] No existe uih-assets/dr-servin.png. Se omite foto del doctor.");
     }
   }
 
@@ -213,7 +216,7 @@ export async function generateBrandedImage(prompt, outputPath) {
     apiKey: process.env.OPENAI_API_KEY,
   });
 
-const finalPrompt = `
+  const finalPrompt = `
 ${prompt}
 
 Crear ÚNICAMENTE un fondo médico premium para UIH — Unidad Integral Homeopática.
@@ -234,7 +237,7 @@ El sistema agregará después el logo UIH, datos institucionales y la foto real 
 Evitar imágenes exageradas, irreales, sensacionalistas o con promesas médicas.
 `;
 
-  console.log("[UIH/image] Generando imagen con OpenAI...");
+  console.log("[UIH/image] Generando fondo clínico con OpenAI...");
 
   const response = await openai.images.generate({
     model: "gpt-image-1",
@@ -252,40 +255,11 @@ Evitar imágenes exageradas, irreales, sensacionalistas o con promesas médicas.
 
   const imageBuffer = Buffer.from(b64, "base64");
 
-  console.log("[UIH/image] Aplicando branding UIH...");
+  console.log("[UIH/image] Aplicando branding UIH con Dr. Servín real...");
 
   return applyUIHBranding(imageBuffer, outputPath, {
     includeLogo: true,
     includeDoctor: true,
-    if (includeDoctor) {
-  const doctorFile = path.join(ASSETS, "dr-servin.png");
-  const size       = Math.round(width * 0.18); // antes 0.07
-  const margin     = Math.round(width * 0.02);
-  const border     = Math.max(6, Math.round(width * 0.004));
-
-  const borderSize = size + border * 2;
-
-  const borderBuf  = Buffer.from(
-    `<svg viewBox="0 0 ${borderSize} ${borderSize}" xmlns="http://www.w3.org/2000/svg">
-       <circle cx="${borderSize / 2}" cy="${borderSize / 2}" r="${borderSize / 2}"
-               fill="white" opacity="0.95"/>
-     </svg>`
-  );
-
-  const doctorBuf = await circularCrop(doctorFile, size);
-
-  layers.push({
-    input: borderBuf,
-    top: margin - border,
-    left: width - borderSize - margin,
-  });
-
-  layers.push({
-    input: doctorBuf,
-    top: margin,
-    left: width - size - margin,
-  });
-}
     includeFooter: true,
     includeWatermark: true,
   });
