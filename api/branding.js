@@ -257,6 +257,35 @@ Evitar imágenes exageradas, irreales, sensacionalistas o con promesas médicas.
   return applyUIHBranding(imageBuffer, outputPath, {
     includeLogo: true,
     includeDoctor: true,
+    if (includeDoctor) {
+  const doctorFile = path.join(ASSETS, "dr-servin.png");
+  const size       = Math.round(width * 0.18); // antes 0.07
+  const margin     = Math.round(width * 0.02);
+  const border     = Math.max(6, Math.round(width * 0.004));
+
+  const borderSize = size + border * 2;
+
+  const borderBuf  = Buffer.from(
+    `<svg viewBox="0 0 ${borderSize} ${borderSize}" xmlns="http://www.w3.org/2000/svg">
+       <circle cx="${borderSize / 2}" cy="${borderSize / 2}" r="${borderSize / 2}"
+               fill="white" opacity="0.95"/>
+     </svg>`
+  );
+
+  const doctorBuf = await circularCrop(doctorFile, size);
+
+  layers.push({
+    input: borderBuf,
+    top: margin - border,
+    left: width - borderSize - margin,
+  });
+
+  layers.push({
+    input: doctorBuf,
+    top: margin,
+    left: width - size - margin,
+  });
+}
     includeFooter: true,
     includeWatermark: true,
   });
