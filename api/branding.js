@@ -1,7 +1,11 @@
 /**
  * api/branding.js — UIH Studio
- * Genera imágenes con OpenAI y aplica branding institucional UIH.
- * Usa logo real UIH y foto real del Dr. Servín desde /uih-assets.
+ * Genera imágenes institucionales UIH usando:
+ * 1) Fotos reales del consultorio si existen en /uih-assets
+ * 2) Fondo realista generado con OpenAI solo si no hay foto real
+ * 3) Logo UIH real
+ * 4) Foto real del Dr. Servín
+ * 5) Footer institucional
  */
 
 import sharp from "sharp";
@@ -12,6 +16,9 @@ import { fileURLToPath } from "url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ASSETS = path.resolve(__dirname, "../uih-assets");
 
+const OUTPUT_WIDTH = 1024;
+const OUTPUT_HEIGHT = 1536;
+
 async function fileExists(filePath) {
   try {
     await fs.access(filePath);
@@ -19,6 +26,13 @@ async function fileExists(filePath) {
   } catch {
     return false;
   }
+}
+
+async function findFirstExisting(files) {
+  for (const file of files) {
+    if (await fileExists(file)) return file;
+  }
+  return null;
 }
 
 async function circularCrop(imagePath, diameter) {
@@ -31,10 +45,38 @@ async function circularCrop(imagePath, diameter) {
   );
 
   return sharp(imagePath)
-    .resize(diameter, diameter, { fit: "cover", position: "top" })
+    .rotate()
+    .resize(diameter, diameter, {
+      fit: "cover",
+      position: "top",
+    })
     .composite([{ input: mask, blend: "dest-in" }])
     .png()
     .toBuffer();
+}
+
+function clinicOverlaySVG(width, height) {
+  return Buffer.from(
+    `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="topShade" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#032548" stop-opacity="0.50"/>
+          <stop offset="35%" stop-color="#032548" stop-opacity="0.18"/>
+          <stop offset="75%" stop-color="#032548" stop-opacity="0.08"/>
+          <stop offset="100%" stop-color="#032548" stop-opacity="0.45"/>
+        </linearGradient>
+
+        <linearGradient id="sideShade" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stop-color="#032548" stop-opacity="0.32"/>
+          <stop offset="45%" stop-color="#017590" stop-opacity="0.05"/>
+          <stop offset="100%" stop-color="#032548" stop-opacity="0.24"/>
+        </linearGradient>
+      </defs>
+
+      <rect x="0" y="0" width="${width}" height="${height}" fill="url(#topShade)"/>
+      <rect x="0" y="0" width="${width}" height="${height}" fill="url(#sideShade)"/>
+    </svg>`
+  );
 }
 
 function footerSVG(width, height) {
@@ -45,9 +87,9 @@ function footerSVG(width, height) {
     `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
       <defs>
         <linearGradient id="footerGrad" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0%" stop-color="#032548" stop-opacity="0.96"/>
-          <stop offset="55%" stop-color="#0B4F6C" stop-opacity="0.92"/>
-          <stop offset="100%" stop-color="#017590" stop-opacity="0.90"/>
+          <stop offset="0%" stop-color="#032548" stop-opacity="0.97"/>
+          <stop offset="58%" stop-color="#0B4F6C" stop-opacity="0.94"/>
+          <stop offset="100%" stop-color="#017590" stop-opacity="0.92"/>
         </linearGradient>
       </defs>
 
@@ -58,13 +100,13 @@ function footerSVG(width, height) {
         font-size="${Math.round(width * 0.026)}"
         font-weight="800"
         fill="#FFFFFF"
-        letter-spacing="2">
+        letter-spacing="1.5">
         www.uih.mx
       </text>
 
-      <text x="${Math.round(width * 0.055)}" y="${y + Math.round(footerH * 0.67)}"
+      <text x="${Math.round(width * 0.055)}" y="${y + Math.round(footerH * 0.68)}"
         font-family="Arial, sans-serif"
-        font-size="${Math.round(width * 0.019)}"
+        font-size="${Math.round(width * 0.018)}"
         font-weight="700"
         fill="#A9BECF"
         letter-spacing="1">
@@ -73,7 +115,7 @@ function footerSVG(width, height) {
 
       <text x="${Math.round(width * 0.63)}" y="${y + Math.round(footerH * 0.36)}"
         font-family="Arial, sans-serif"
-        font-size="${Math.round(width * 0.019)}"
+        font-size="${Math.round(width * 0.018)}"
         font-weight="800"
         fill="#46EFF4"
         letter-spacing="2">
@@ -98,15 +140,122 @@ function subtleWatermarkSVG(width, height) {
         text-anchor="middle"
         dominant-baseline="middle"
         font-family="Arial, sans-serif"
-        font-size="${Math.round(width * 0.16)}"
+        font-size="${Math.round(width * 0.15)}"
         font-weight="900"
         fill="#46EFF4"
-        opacity="0.045"
+        opacity="0.035"
         letter-spacing="12">
         UIH
       </text>
     </svg>`
   );
+}
+
+async function createBaseFromRealClinicPhoto() {
+  const clinicFile = await findFirstExisting([
+    path.join(ASSETS, "consultorio-1.jpg"),
+    path.join(ASSETS, "consultorio-1.jpeg"),
+    path.join(ASSETS, "consultorio-1.png"),
+    path.join(ASSETS, "consultorio.jpg"),
+    path.join(ASSETS, "consultorio.jpeg"),
+    path.join(ASSETS, "consultorio.png"),
+  ]);
+
+  if (!clinicFile) {
+    return null;
+  }
+
+  console.log(`[UIH/image] Usando foto real del consultorio: ${clinicFile}`);
+
+  const base = await sharp(clinicFile)
+    .rotate()
+    .resize(OUTPUT_WIDTH, OUTPUT_HEIGHT, {
+      fit: "cover",
+      position: "center",
+    })
+    .modulate({
+      brightness: 0.92,
+      saturation: 0.88,
+    })
+    .sharpen({
+      sigma: 0.7,
+    })
+    .png()
+    .toBuffer();
+
+  const composed = await sharp(base)
+    .composite([
+      {
+        input: clinicOverlaySVG(OUTPUT_WIDTH, OUTPUT_HEIGHT),
+        top: 0,
+        left: 0,
+      },
+    ])
+    .png()
+    .toBuffer();
+
+  return composed;
+}
+
+async function createBaseWithOpenAI(prompt) {
+  const { default: OpenAI } = await import("openai");
+
+  if (!process.env.OPENAI_API_KEY) {
+    throw new Error("Falta OPENAI_API_KEY en Render.");
+  }
+
+  const openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+  });
+
+  const finalPrompt = `
+${prompt}
+
+Crear ÚNICAMENTE un fondo médico realista para UIH — Unidad Integral Homeopática.
+
+MUY IMPORTANTE:
+No incluir personas.
+No incluir doctores.
+No incluir pacientes.
+No generar rostros humanos.
+No generar cuerpos humanos.
+No generar manos humanas.
+No crear médicos ficticios.
+No usar texto dentro de la imagen base.
+No crear estilo futurista.
+No ciencia ficción.
+No hologramas.
+No luces exageradas.
+No laboratorio tecnológico.
+No hospital de lujo irreal.
+
+La imagen debe verse como un consultorio real de medicina integral en Tijuana:
+sobrio, profesional, humano, limpio, ordenado, con escritorio médico,
+silla, área de consulta, iluminación natural o clínica suave.
+Puede tener una ligera estética UIH con tonos navy, teal y aqua,
+pero de forma discreta y realista.
+
+El sistema agregará después el logo UIH, datos institucionales y la foto real del Dr. Luis Alfonso Servín Villanueva.
+Evitar imágenes exageradas, sensacionalistas o con promesas médicas.
+`;
+
+  console.log("[UIH/image] No hay consultorio real. Generando fondo realista con OpenAI...");
+
+  const response = await openai.images.generate({
+    model: "gpt-image-1",
+    prompt: finalPrompt,
+    size: "1024x1536",
+    quality: "high",
+    n: 1,
+  });
+
+  const b64 = response?.data?.[0]?.b64_json;
+
+  if (!b64) {
+    throw new Error("OpenAI no devolvió imagen en base64.");
+  }
+
+  return Buffer.from(b64, "base64");
 }
 
 export async function applyUIHBranding(input, outputPath, opts = {}) {
@@ -117,8 +266,18 @@ export async function applyUIHBranding(input, outputPath, opts = {}) {
     includeWatermark = true,
   } = opts;
 
-  const base = sharp(input).png();
+  const baseBuffer = await sharp(input)
+    .rotate()
+    .resize(OUTPUT_WIDTH, OUTPUT_HEIGHT, {
+      fit: "cover",
+      position: "center",
+    })
+    .png()
+    .toBuffer();
+
+  const base = sharp(baseBuffer).png();
   const { width, height } = await base.metadata();
+
   const layers = [];
 
   if (includeWatermark) {
@@ -137,7 +296,11 @@ export async function applyUIHBranding(input, outputPath, opts = {}) {
       const margin = Math.round(width * 0.055);
 
       const logoBuf = await sharp(logoFile)
-        .resize(logoW, null, { fit: "inside" })
+        .rotate()
+        .resize(logoW, null, {
+          fit: "inside",
+          withoutEnlargement: true,
+        })
         .png()
         .toBuffer();
 
@@ -155,7 +318,7 @@ export async function applyUIHBranding(input, outputPath, opts = {}) {
     const doctorFile = path.join(ASSETS, "dr-servin.png");
 
     if (await fileExists(doctorFile)) {
-      const size = Math.round(width * 0.22);
+      const size = Math.round(width * 0.23);
       const margin = Math.round(width * 0.035);
       const border = Math.max(8, Math.round(width * 0.006));
       const borderSize = size + border * 2;
@@ -194,11 +357,18 @@ export async function applyUIHBranding(input, outputPath, opts = {}) {
     });
   }
 
-  const result = await base.composite(layers).png().toBuffer();
+  const result = await base
+    .composite(layers)
+    .png()
+    .toBuffer();
 
   if (outputPath) {
-    await fs.mkdir(path.dirname(outputPath), { recursive: true });
+    await fs.mkdir(path.dirname(outputPath), {
+      recursive: true,
+    });
+
     await fs.writeFile(outputPath, result);
+
     console.log(`[UIH/branding] Imagen guardada: ${outputPath}`);
   }
 
@@ -206,56 +376,13 @@ export async function applyUIHBranding(input, outputPath, opts = {}) {
 }
 
 export async function generateBrandedImage(prompt, outputPath) {
-  const { default: OpenAI } = await import("openai");
+  let imageBuffer = await createBaseFromRealClinicPhoto();
 
-  if (!process.env.OPENAI_API_KEY) {
-    throw new Error("Falta OPENAI_API_KEY en Render.");
+  if (!imageBuffer) {
+    imageBuffer = await createBaseWithOpenAI(prompt);
   }
 
-  const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
-  });
-
-  const finalPrompt = `
-${prompt}
-
-Crear ÚNICAMENTE un fondo médico premium para UIH — Unidad Integral Homeopática.
-No incluir personas.
-No incluir doctores.
-No incluir pacientes.
-No generar rostros humanos.
-No generar cuerpos humanos.
-No generar manos humanas.
-No crear médicos ficticios.
-No usar texto dentro de la imagen base.
-
-La imagen debe ser un escenario clínico moderno, elegante y profesional:
-consultorio médico premium, escritorio médico, iluminación navy, teal y aqua,
-sensación de tecnología, confianza médica, limpieza, orden y atención integral.
-
-El sistema agregará después el logo UIH, datos institucionales y la foto real del Dr. Luis Alfonso Servín Villanueva.
-Evitar imágenes exageradas, irreales, sensacionalistas o con promesas médicas.
-`;
-
-  console.log("[UIH/image] Generando fondo clínico con OpenAI...");
-
-  const response = await openai.images.generate({
-    model: "gpt-image-1",
-    prompt: finalPrompt,
-    size: "1024x1536",
-    quality: "high",
-    n: 1,
-  });
-
-  const b64 = response?.data?.[0]?.b64_json;
-
-  if (!b64) {
-    throw new Error("OpenAI no devolvió imagen en base64.");
-  }
-
-  const imageBuffer = Buffer.from(b64, "base64");
-
-  console.log("[UIH/image] Aplicando branding UIH con Dr. Servín real...");
+  console.log("[UIH/image] Aplicando branding UIH con imagen real del Dr. Servín...");
 
   return applyUIHBranding(imageBuffer, outputPath, {
     includeLogo: true,
