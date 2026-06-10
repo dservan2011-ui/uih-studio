@@ -1591,4 +1591,413 @@ async function generar() {
     alert('Error conectando con el generador UIH: ' + err.message);
   }
 }
+/* ════════════════════════════════════════════
+   UIH OPENAI ENGINE — CAMPAÑA + IMAGEN 4K REAL
+   Este bloque reemplaza la función generar()
+   y conecta Imagen 4K con la API real de UIH.
+════════════════════════════════════════════ */
+
+const UIH_API_BASE = "https://uih-studio-api.onrender.com";
+
+function uihCleanFilename(text) {
+  return String(text || "uih-imagen")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 45);
+}
+
+function uihServiceFromTema(tema) {
+  var t = String(tema || "").toLowerCase();
+
+  if (t.includes("suero") || t.includes("iv")) return "Sueros intravenosos";
+  if (t.includes("regenerativa") || t.includes("célula") || t.includes("celula")) return "Células madre / medicina regenerativa";
+  if (t.includes("hidro") || t.includes("colon")) return "Hidroterapia de colon";
+  if (t.includes("epigen")) return "Estudio de epigenética con cabello";
+  if (t.includes("video") || t.includes("distancia")) return "Consulta por videollamada";
+  if (t.includes("nebul")) return "Nebulización";
+  if (t.includes("neural") || t.includes("dolor")) return "Terapia neural";
+  if (t.includes("consulta") || t.includes("homeopat")) return "Consulta de primera vez";
+
+  return "Consulta de primera vez";
+}
+
+function uihCarouselToText(slides) {
+  if (!Array.isArray(slides)) return "";
+
+  return slides.map(function(s, i) {
+    return "SLIDE " + (s.slide || i + 1) + "\n" +
+      String(s.heading || "").toUpperCase() + "\n" +
+      String(s.body || "");
+  }).join("\n\n");
+}
+
+function uihBuildMainCopy(c) {
+  var hashtags = Array.isArray(c.hashtags) ? c.hashtags.join(" ") : "";
+
+  return [
+    "TÍTULO:",
+    c.campaign?.title || "",
+    "",
+    "SUBTÍTULO:",
+    c.campaign?.subtitle || "",
+    "",
+    "COPY PRINCIPAL:",
+    c.campaign?.main_copy || "",
+    "",
+    "COPY CORTO:",
+    c.campaign?.short_copy || "",
+    "",
+    "INSTAGRAM:",
+    c.captions?.instagram || "",
+    "",
+    "FACEBOOK:",
+    c.captions?.facebook || "",
+    "",
+    "TIKTOK:",
+    c.captions?.tiktok || "",
+    "",
+    "YOUTUBE SHORTS:",
+    c.captions?.youtube || "",
+    "",
+    "CARRUSEL:",
+    uihCarouselToText(c.carousel),
+    "",
+    "WHATSAPP:",
+    c.whatsapp || "",
+    "",
+    "ANUNCIO META:",
+    "Texto: " + (c.ads?.primary_text || ""),
+    "Titular: " + (c.ads?.headline || ""),
+    "Descripción: " + (c.ads?.description || ""),
+    "",
+    "HASHTAGS:",
+    hashtags,
+    "",
+    "DISCLAIMER:",
+    c.disclaimer || "",
+    "",
+    "PROMPT IMAGEN 4K:",
+    c.image_prompt || "",
+    "",
+    "PROMPT HEYGEN:",
+    c.heygen_prompt || "",
+    "",
+    "TEXTO ELEVENLABS:",
+    c.elevenlabs_script || "",
+    "",
+    "REVISIÓN DE SEGURIDAD:",
+    (c.safety_review?.status || "aprobado") + " — " + (c.safety_review?.notes || "")
+  ].join("\n");
+}
+
+function uihBuildStrategyText(c) {
+  return [
+    "ESTRATEGIA UIH",
+    "",
+    "Resumen:",
+    c.strategy?.summary || "",
+    "",
+    "Ángulo:",
+    c.strategy?.angle || "",
+    "",
+    "Público:",
+    c.strategy?.audience || "",
+    "",
+    "Objetivo:",
+    c.strategy?.objective || "",
+    "",
+    "CTA:",
+    c.strategy?.cta || "",
+    "",
+    "Título de campaña:",
+    c.campaign?.title || "",
+    "",
+    "Subtítulo:",
+    c.campaign?.subtitle || "",
+    "",
+    "Disclaimer:",
+    c.disclaimer || "",
+    "",
+    "Revisión de seguridad:",
+    (c.safety_review?.status || "aprobado") + " — " + (c.safety_review?.notes || "")
+  ].join("\n");
+}
+
+async function uihPostJSON(path, payload, timeoutMs) {
+  var controller = new AbortController();
+  var timer = setTimeout(function() {
+    controller.abort();
+  }, timeoutMs || 120000);
+
+  try {
+    var res = await fetch(UIH_API_BASE + path, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(payload),
+      signal: controller.signal
+    });
+
+    var raw = await res.text();
+    var data = {};
+
+    try {
+      data = raw ? JSON.parse(raw) : {};
+    } catch (e) {
+      throw new Error("La API no respondió JSON válido: " + raw.slice(0, 300));
+    }
+
+    if (!res.ok || data.ok === false) {
+      throw new Error(data.error || "Error desconocido de API");
+    }
+
+    return data;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function uihGenerateCampaignPayload(tema, mod) {
+  var pub = document.getElementById("s-pub")?.value || "Adultos de Tijuana, San Diego y frontera interesados en medicina integral";
+  var obj = document.getElementById("s-obj")?.value || "Captar citas por WhatsApp";
+  var service = uihServiceFromTema(tema);
+
+  var data = await uihPostJSON("/api/generate/campaign", {
+    theme: tema,
+    service: service,
+    objective: obj,
+    audience: pub,
+    location: "Tijuana / San Diego / San Ysidro / California / Phoenix",
+    module: String(mod || "TODO").toUpperCase()
+  }, 120000);
+
+  return data.campaign;
+}
+
+async function uihGenerateImageFromPrompt(prompt, tema) {
+  var filename =
+    uihCleanFilename(tema) + "-" +
+    Date.now() +
+    ".png";
+
+  var data = await uihPostJSON("/api/generate/image", {
+    prompt: prompt,
+    filename: filename
+  }, 180000);
+
+  if (!data.url) {
+    throw new Error("La API generó respuesta sin URL de imagen.");
+  }
+
+  if (String(data.url).startsWith("http")) {
+    return data.url;
+  }
+
+  return UIH_API_BASE + data.url;
+}
+
+/* Reemplaza genImagen anterior para que carrusel también use la API UIH */
+async function genImagen(tema, estilo, formato) {
+  var prompt = [
+    tema,
+    "Imagen publicitaria médica institucional de UIH.",
+    "Usar estilo realista, sobrio, profesional y humano.",
+    "No futurista, no ciencia ficción, no hologramas.",
+    "No inventar doctores ni pacientes.",
+    "Usar composición limpia para publicidad médica."
+  ].join(" ");
+
+  return await uihGenerateImageFromPrompt(prompt, tema);
+}
+
+/* Nueva función principal */
+async function generar() {
+  var tema = getTema();
+
+  if (!tema) {
+    alert("Selecciona o escribe un tema.");
+    return;
+  }
+
+  var mod = STATE.mod || "todo";
+
+  hideAll();
+
+  try {
+    if (mod === "imagen") {
+      startLoad("Generando Imagen 4K UIH con Dr. Servín real...");
+
+      var campaignImg = await uihGenerateCampaignPayload(tema, "imagen");
+      var imagePrompt = campaignImg.image_prompt || tema;
+
+      var imgUrl = await uihGenerateImageFromPrompt(imagePrompt, tema);
+
+      stopLoad();
+
+      showImagen(imgUrl, tema);
+
+      document.getElementById("est-out").value = uihBuildStrategyText(campaignImg);
+      document.getElementById("res-estrategia").style.display = "block";
+
+      return;
+    }
+
+    if (mod === "todo") {
+      startLoad("Generando campaña completa UIH + Imagen 4K...");
+
+      var campaignTodo = await uihGenerateCampaignPayload(tema, "todo");
+      var imgPromptTodo = campaignTodo.image_prompt || tema;
+
+      var imageUrlTodo = await uihGenerateImageFromPrompt(imgPromptTodo, tema);
+
+      stopLoad();
+
+      showImagen(imageUrlTodo, tema);
+
+      STATE.copies = STATE.copies || {};
+      STATE.copies.post = (campaignTodo.captions?.instagram || "") + "\n\n" + (campaignTodo.captions?.facebook || "");
+      STATE.copies.story = "Historias sugeridas:\n\n" + uihCarouselToText(campaignTodo.carousel);
+      STATE.copies.carrusel = uihCarouselToText(campaignTodo.carousel);
+      STATE.copies.whatsapp = campaignTodo.whatsapp || "";
+      STATE.copies.anuncio =
+        "Texto: " + (campaignTodo.ads?.primary_text || "") + "\n" +
+        "Titular: " + (campaignTodo.ads?.headline || "") + "\n" +
+        "Descripción: " + (campaignTodo.ads?.description || "");
+      STATE.copies.email =
+        "Asunto sugerido: Información de UIH — " + tema + "\n\n" +
+        (campaignTodo.campaign?.main_copy || "") + "\n\n" +
+        "Agenda tu cita: 664-628-2202\nwww.uih.mx";
+
+      document.getElementById("copy-badge").textContent = "Campaña UIH generada por OpenAI";
+      document.getElementById("copy-out").value = uihBuildMainCopy(campaignTodo);
+      document.getElementById("res-copy").style.display = "block";
+
+      document.getElementById("est-out").value = uihBuildStrategyText(campaignTodo);
+      document.getElementById("res-estrategia").style.display = "block";
+
+      var scriptTodo = campaignTodo.elevenlabs_script || campaignTodo.reel?.script || "";
+
+      if (scriptTodo) {
+        document.getElementById("guion-edit").value = scriptTodo;
+        document.getElementById("res-vid").style.display = "block";
+        document.getElementById("audio-box").style.display = "none";
+        document.getElementById("vid-status").style.display = "none";
+        document.getElementById("vid-box").style.display = "none";
+      }
+
+      saveToLib("campaña", tema, uihBuildMainCopy(campaignTodo), imageUrlTodo);
+
+      return;
+    }
+
+    if (mod === "carrusel") {
+      startLoad("Generando estructura de carrusel UIH...");
+
+      var campaignCar = await uihGenerateCampaignPayload(tema, "carrusel");
+
+      stopLoad();
+
+      STATE.copies = STATE.copies || {};
+      STATE.copies.carrusel = uihCarouselToText(campaignCar.carousel);
+
+      document.getElementById("copy-badge").textContent = "Carrusel UIH";
+      document.getElementById("copy-out").value = uihCarouselToText(campaignCar.carousel);
+      document.getElementById("res-copy").style.display = "block";
+
+      document.getElementById("est-out").value = uihBuildStrategyText(campaignCar);
+      document.getElementById("res-estrategia").style.display = "block";
+
+      saveToLib("carrusel", tema, uihCarouselToText(campaignCar.carousel), "");
+
+      return;
+    }
+
+    if (mod === "video") {
+      startLoad("Generando guion para video UIH...");
+
+      var campaignVideo = await uihGenerateCampaignPayload(tema, "video");
+
+      stopLoad();
+
+      var scriptVideo = campaignVideo.elevenlabs_script || campaignVideo.reel?.script || "";
+
+      document.getElementById("guion-edit").value = scriptVideo;
+      document.getElementById("res-vid").style.display = "block";
+      document.getElementById("audio-box").style.display = "none";
+      document.getElementById("vid-status").style.display = "none";
+      document.getElementById("vid-box").style.display = "none";
+
+      document.getElementById("est-out").value = uihBuildStrategyText(campaignVideo);
+      document.getElementById("res-estrategia").style.display = "block";
+
+      saveToLib("guion", tema, scriptVideo, "");
+
+      return;
+    }
+
+    if (mod === "estrategia" || mod === "campana") {
+      startLoad("Generando estrategia UIH...");
+
+      var campaignStrategy = await uihGenerateCampaignPayload(tema, mod);
+
+      stopLoad();
+
+      document.getElementById("est-out").value = uihBuildStrategyText(campaignStrategy);
+      document.getElementById("res-estrategia").style.display = "block";
+
+      saveToLib("estrategia", tema, uihBuildStrategyText(campaignStrategy), "");
+
+      return;
+    }
+
+    startLoad("Generando contenido UIH...");
+
+    var campaignCopy = await uihGenerateCampaignPayload(tema, mod);
+
+    stopLoad();
+
+    var output = "";
+
+    if (mod === "whatsapp") {
+      output = campaignCopy.whatsapp || "";
+    } else if (mod === "anuncio") {
+      output =
+        "Texto: " + (campaignCopy.ads?.primary_text || "") + "\n" +
+        "Titular: " + (campaignCopy.ads?.headline || "") + "\n" +
+        "Descripción: " + (campaignCopy.ads?.description || "");
+    } else if (mod === "email") {
+      output =
+        "Asunto sugerido: Información de UIH — " + tema + "\n\n" +
+        (campaignCopy.campaign?.main_copy || "") + "\n\n" +
+        "Agenda tu cita: 664-628-2202\nwww.uih.mx";
+    } else if (mod === "story") {
+      output = "Historias sugeridas:\n\n" + uihCarouselToText(campaignCopy.carousel);
+    } else {
+      output = uihBuildMainCopy(campaignCopy);
+    }
+
+    STATE.copies = STATE.copies || {};
+    STATE.copies[mod] = output;
+
+    document.getElementById("copy-badge").textContent = "Contenido UIH generado por OpenAI";
+    document.getElementById("copy-out").value = output;
+    document.getElementById("res-copy").style.display = "block";
+
+    saveToLib("copy", tema, output, "");
+
+  } catch (err) {
+    stopLoad();
+
+    if (err.name === "AbortError") {
+      alert("La generación tardó demasiado. Intente de nuevo.");
+      return;
+    }
+
+    alert("Error conectando con el generador UIH: " + err.message);
+  }
+}
 </script>
