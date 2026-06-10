@@ -5,10 +5,12 @@ function extractGeminiImageBuffer(data) {
 
   for (const candidate of candidates) {
     const parts = candidate?.content?.parts || [];
+
     for (const part of parts) {
       if (part?.inlineData?.data) {
         return Buffer.from(part.inlineData.data, "base64");
       }
+
       if (part?.inline_data?.data) {
         return Buffer.from(part.inline_data.data, "base64");
       }
@@ -24,8 +26,11 @@ function extractGeminiText(data) {
 
   for (const candidate of candidates) {
     const parts = candidate?.content?.parts || [];
+
     for (const part of parts) {
-      if (part?.text) texts.push(part.text);
+      if (part?.text) {
+        texts.push(part.text);
+      }
     }
   }
 
@@ -43,8 +48,6 @@ export async function generateGeminiBrandedImage(prompt, outputPath, opts = {}) 
 
   const {
     model = "gemini-3-pro-image",
-    aspectRatio = "4:5",
-    imageSize = "2K",
     includeLogo = true,
     includeDoctor = true,
     includeWatermark = false,
@@ -53,14 +56,23 @@ export async function generateGeminiBrandedImage(prompt, outputPath, opts = {}) 
   const finalPrompt = `
 ${prompt}
 
-IMPORTANTE:
-- La imagen debe verse médica, profesional, elegante y realista.
-- No inventes otro doctor como sujeto principal.
-- No pongas resonadores, tomógrafos ni equipos que UIH no usa, a menos que se pidan explícitamente.
-- Usa un consultorio real, sobrio, cálido y profesional.
-- Evita estilo futurista exagerado.
-- Mantén una estética premium con colores navy, teal, aqua y blanco.
-- Deja espacio visual para branding.
+FORMATO:
+Crear imagen vertical para publicación médica en formato 4:5, alta calidad, estilo editorial profesional.
+
+REGLAS IMPORTANTES PARA UIH:
+- Crear únicamente una imagen médica realista y profesional.
+- No inventar otro doctor como protagonista.
+- No inventar pacientes.
+- No poner resonador magnético, tomógrafo, quirófano, rayos X ni equipo que UIH no usa.
+- No escribir texto dentro de la imagen base.
+- No agregar logos inventados.
+- No estilo futurista.
+- No ciencia ficción.
+- No hologramas.
+- No laboratorio tecnológico.
+- Preferir consultorio sobrio, humano, realista y limpio.
+- Usar colores navy, teal, aqua y blanco de forma discreta.
+- Dejar espacio visual para que el sistema agregue branding UIH.
 `.trim();
 
   const response = await fetch(
@@ -74,19 +86,13 @@ IMPORTANTE:
       body: JSON.stringify({
         contents: [
           {
-            role: "user",
-            parts: [{ text: finalPrompt }],
+            parts: [
+              {
+                text: finalPrompt,
+              },
+            ],
           },
         ],
-        generationConfig: {
-          responseModalities: ["TEXT", "IMAGE"],
-          responseFormat: {
-            image: {
-              aspectRatio,
-              imageSize,
-            },
-          },
-        },
       }),
     }
   );
@@ -108,5 +114,6 @@ IMPORTANTE:
     includeLogo,
     includeDoctor,
     includeWatermark,
+    prompt,
   });
 }
