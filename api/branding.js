@@ -9,7 +9,7 @@ import fs from "fs/promises";
 import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const ASSETS = path.resolve(__dirname, "../assets");
+const ASSETS = path.resolve(__dirname, "../uih-assets");
 
 async function fileExists(filePath) {
   try {
@@ -213,14 +213,25 @@ export async function generateBrandedImage(prompt, outputPath) {
     apiKey: process.env.OPENAI_API_KEY,
   });
 
-  const finalPrompt = `
+const finalPrompt = `
 ${prompt}
 
-Crear imagen médica premium para UIH — Unidad Integral Homeopática.
-Estilo clínico moderno, elegante, profesional, con tonos navy, teal y aqua.
-Luz fría, alto contraste, sensación de confianza médica, tecnología y atención humana.
-No usar texto dentro de la imagen base. El sistema agregará branding institucional después.
-Evitar imágenes exageradas, irreales o sensacionalistas.
+Crear ÚNICAMENTE un fondo médico premium para UIH — Unidad Integral Homeopática.
+No incluir personas.
+No incluir doctores.
+No incluir pacientes.
+No generar rostros humanos.
+No generar cuerpos humanos.
+No generar manos humanas.
+No crear médicos ficticios.
+No usar texto dentro de la imagen base.
+
+La imagen debe ser un escenario clínico moderno, elegante y profesional:
+consultorio médico premium, escritorio médico, iluminación navy, teal y aqua,
+sensación de tecnología, confianza médica, limpieza, orden y atención integral.
+
+El sistema agregará después el logo UIH, datos institucionales y la foto real del Dr. Luis Alfonso Servín Villanueva.
+Evitar imágenes exageradas, irreales, sensacionalistas o con promesas médicas.
 `;
 
   console.log("[UIH/image] Generando imagen con OpenAI...");
