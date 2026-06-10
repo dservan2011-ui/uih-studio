@@ -1,12 +1,11 @@
 /**
  * server.js — UIH Studio
- * Servidor Express que sirve el frontend (index.html)
- * y expone APIs para:
- * - campañas
- * - imágenes OpenAI
- * - imágenes Gemini / Nano Banana Pro
- * - voz ElevenLabs
- * - video HeyGen
+ * Backend principal:
+ * - Sirve index.html
+ * - Genera campañas OpenAI
+ * - Genera imágenes OpenAI con branding UIH
+ * - Genera imágenes Gemini / Nano Banana Pro con branding UIH
+ * - Maneja voz y video
  */
 
 import "dotenv/config";
@@ -16,47 +15,60 @@ import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
 
-// ── APIs internas ─────────────────────────────────────────────────────────────
 import { textToVoice, pollVideoStatus } from "./api/videoGenerator.js";
 import { generateBrandedImage } from "./api/branding.js";
 import { generateCampaign } from "./api/campaignGenerator.js";
 import { generateGeminiBrandedImage } from "./api/geminiImageGenerator.js";
 
-// ── Config base ───────────────────────────────────────────────────────────────
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Carpeta de generados
 const GENERATED_DIR = path.join(__dirname, "generated");
 
-// Asegurar que exista
 if (!fs.existsSync(GENERATED_DIR)) {
   fs.mkdirSync(GENERATED_DIR, { recursive: true });
 }
 
-// ── Middleware ────────────────────────────────────────────────────────────────
 app.use(cors());
-app.use(express.json({ limit: "20mb" }));
-app.use(express.urlencoded({ extended: true, limit: "20mb" }));
+app.use(express.json({ limit: "25mb" }));
+app.use(express.urlencoded({ extended: true, limit: "25mb" }));
 
-// ── Archivos estáticos ────────────────────────────────────────────────────────
 app.use(express.static(__dirname));
 app.use("/generated", express.static(GENERATED_DIR));
 
-// ── Health check ──────────────────────────────────────────────────────────────
+function safeFilename(name, fallback = "uih-image.png") {
+  const raw = String(name || fallback);
+
+  const cleaned = raw
+    .replace(/[^a-zA-Z0-9._-]/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 120);
+
+  return cleaned || fallback;
+}
+
+/* ────────────────────────────────────────────────────────────── */
+/* HEALTH                                                        */
+/* ────────────────────────────────────────────────────────────── */
+
 app.get("/api/health", (req, res) => {
   res.json({
     ok: true,
     service: "uih-studio-api",
     status: "running",
+    openai: Boolean(process.env.OPENAI_API_KEY),
+    gemini: Boolean(process.env.GEMINI_API_KEY),
     timestamp: new Date().toISOString(),
   });
 });
 
-// ── POST /api/generate/campaign ───────────────────────────────────────────────
+/* ────────────────────────────────────────────────────────────── */
+/* CAMPAÑA OPENAI                                                */
+/* ────────────────────────────────────────────────────────────── */
+
 app.post("/api/generate/campaign", async (req, res) => {
   try {
     const {
@@ -68,23 +80,26 @@ app.post("/api/generate/campaign", async (req, res) => {
       module = "TODO",
     } = req.body || {};
 
-    if (!theme && !service) {
+    if (!theme) {
       return res.status(400).json({
         ok: false,
-        error: "Falta 'theme' o 'service'.",
+        error: "Falta el campo 'theme'.",
       });
     }
 
-    const result = await generateCampaign({
-      theme: theme || service,
-      service: service || theme,
+    const campaign = await generateCampaign({
+      theme,
+      service,
       objective,
       audience,
       location,
       module,
     });
 
-    res.json(result);
+    res.json({
+      ok: true,
+      campaign,
+    });
   } catch (err) {
     console.error("[UIH/campaign]", err);
     res.status(500).json({
@@ -94,10 +109,16 @@ app.post("/api/generate/campaign", async (req, res) => {
   }
 });
 
-// ── POST /api/generate/image (OpenAI) ─────────────────────────────────────────
+/* ────────────────────────────────────────────────────────────── */
+/* IMAGEN OPENAI + BRANDING UIH                                  */
+/* ────────────────────────────────────────────────────────────── */
+
 app.post("/api/generate/image", async (req, res) => {
   try {
-    const { prompt, filename = `uih-${Date.now()}.png` } = req.body || {};
+    const {
+      prompt,
+      filename = `uih-openai-${Date.now()}.png`,
+    } = req.body || {};
 
     if (!prompt) {
       return res.status(400).json({
@@ -106,20 +127,23 @@ app.post("/api/generate/image", async (req, res) => {
       });
     }
 
-    const safeFilename = String(filename)
-      .replace(/[^a-zA-Z0-9._-]/g, "-")
-      .replace(/-+/g, "-")
-      .slice(0, 120);
+    if (!process.env.OPENAI_API_KEY) {
+      return res.status(500).json({
+        ok: false,
+        error: "Falta OPENAI_API_KEY en Render.",
+      });
+    }
 
-    const outputPath = path.join(GENERATED_DIR, safeFilename);
+    const finalFilename = safeFilename(filename, `uih-openai-${Date.now()}.png`);
+    const outputPath = path.join(GENERATED_DIR, finalFilename);
 
     await generateBrandedImage(prompt, outputPath);
 
     res.json({
       ok: true,
       engine: "openai",
-      url: `/generated/${safeFilename}`,
-      message: "Imagen generada con branding UIH",
+      url: `/generated/${finalFilename}`,
+      message: "Imagen generada con OpenAI y branding UIH",
     });
   } catch (err) {
     console.error("[UIH/image]", err);
@@ -130,13 +154,16 @@ app.post("/api/generate/image", async (req, res) => {
   }
 });
 
-// ── POST /api/generate/gemini-image (Gemini / Nano Banana Pro) ───────────────
+/* ────────────────────────────────────────────────────────────── */
+/* IMAGEN GEMINI / NANO BANANA PRO + BRANDING UIH                */
+/* ────────────────────────────────────────────────────────────── */
+
 app.post("/api/generate/gemini-image", async (req, res) => {
   try {
     const {
       prompt,
       filename = `uih-gemini-${Date.now()}.png`,
-      model = "gemini-2.5-flash-image-preview",
+      model = "gemini-3-pro-image",
       aspectRatio = "4:5",
       imageSize = "2K",
     } = req.body || {};
@@ -155,12 +182,8 @@ app.post("/api/generate/gemini-image", async (req, res) => {
       });
     }
 
-    const safeFilename = String(filename)
-      .replace(/[^a-zA-Z0-9._-]/g, "-")
-      .replace(/-+/g, "-")
-      .slice(0, 120);
-
-    const outputPath = path.join(GENERATED_DIR, safeFilename);
+    const finalFilename = safeFilename(filename, `uih-gemini-${Date.now()}.png`);
+    const outputPath = path.join(GENERATED_DIR, finalFilename);
 
     await generateGeminiBrandedImage(prompt, outputPath, {
       model,
@@ -175,8 +198,8 @@ app.post("/api/generate/gemini-image", async (req, res) => {
       ok: true,
       engine: "gemini",
       model,
-      url: `/generated/${safeFilename}`,
-      message: "Imagen generada con Gemini/Nano Banana Pro y branding UIH",
+      url: `/generated/${finalFilename}`,
+      message: "Imagen generada con Gemini / Nano Banana Pro y branding UIH",
     });
   } catch (err) {
     console.error("[UIH/gemini-image]", err);
@@ -187,7 +210,10 @@ app.post("/api/generate/gemini-image", async (req, res) => {
   }
 });
 
-// ── POST /api/generate/voice-preview ──────────────────────────────────────────
+/* ────────────────────────────────────────────────────────────── */
+/* VOZ ELEVENLABS                                                */
+/* ────────────────────────────────────────────────────────────── */
+
 app.post("/api/generate/voice-preview", async (req, res) => {
   try {
     const { text } = req.body || {};
@@ -201,8 +227,8 @@ app.post("/api/generate/voice-preview", async (req, res) => {
 
     const audioBuffer = await textToVoice(text);
 
-    res.set("Content-Type", "audio/mpeg");
-    res.set("Content-Disposition", "inline; filename=preview-dr-servin.mp3");
+    res.setHeader("Content-Type", "audio/mpeg");
+    res.setHeader("Content-Disposition", "inline; filename=preview-dr-servin.mp3");
     res.send(audioBuffer);
   } catch (err) {
     console.error("[UIH/voice]", err);
@@ -213,10 +239,16 @@ app.post("/api/generate/voice-preview", async (req, res) => {
   }
 });
 
-// ── POST /api/generate/video ──────────────────────────────────────────────────
+/* ────────────────────────────────────────────────────────────── */
+/* VIDEO SIMPLE                                                  */
+/* ────────────────────────────────────────────────────────────── */
+
 app.post("/api/generate/video", async (req, res) => {
   try {
-    const { script, style = "normal" } = req.body || {};
+    const {
+      script,
+      style = "normal",
+    } = req.body || {};
 
     if (!script) {
       return res.status(400).json({
@@ -225,20 +257,17 @@ app.post("/api/generate/video", async (req, res) => {
       });
     }
 
-    res.json({
-      ok: true,
-      message: "Video en proceso. Esto puede tardar 1-3 minutos.",
+    const { generateDrVideo } = await import("./api/videoGenerator.js");
+
+    const result = await generateDrVideo(script, {
+      avatarStyle: style,
     });
 
-    (async () => {
-      try {
-        const { generateDrVideo } = await import("./api/videoGenerator.js");
-        const url = await generateDrVideo(script, { avatarStyle: style });
-        console.log(`[UIH/video] ✓ Listo: ${url}`);
-      } catch (e) {
-        console.error("[UIH/video] Error:", e.message);
-      }
-    })();
+    res.json({
+      ok: true,
+      result,
+      message: "Video generado o enviado a proceso.",
+    });
   } catch (err) {
     console.error("[UIH/video]", err);
     res.status(500).json({
@@ -248,7 +277,10 @@ app.post("/api/generate/video", async (req, res) => {
   }
 });
 
-// ── POST /api/generate/video-full ─────────────────────────────────────────────
+/* ────────────────────────────────────────────────────────────── */
+/* VIDEO FULL — ELEVENLABS + HEYGEN                              */
+/* ────────────────────────────────────────────────────────────── */
+
 app.post("/api/generate/video-full", async (req, res) => {
   try {
     const {
@@ -273,7 +305,6 @@ app.post("/api/generate/video-full", async (req, res) => {
       });
     }
 
-    // 1) Generar audio con ElevenLabs
     const audioRes = await fetch(
       `https://api.elevenlabs.io/v1/text-to-speech/${elevenVoice}`,
       {
@@ -297,15 +328,16 @@ app.post("/api/generate/video-full", async (req, res) => {
     );
 
     if (!audioRes.ok) {
-      throw new Error(`ElevenLabs ${audioRes.status}`);
+      const errText = await audioRes.text();
+      throw new Error(`ElevenLabs ${audioRes.status}: ${errText}`);
     }
 
     const audioBuffer = Buffer.from(await audioRes.arrayBuffer());
 
-    // 2) Subir audio a HeyGen
     const { FormData, Blob } = await import("formdata-node");
 
     const formData = new FormData();
+
     formData.set(
       "file",
       new Blob([audioBuffer], { type: "audio/mpeg" }),
@@ -326,7 +358,6 @@ app.post("/api/generate/video-full", async (req, res) => {
       throw new Error(`HeyGen upload: ${JSON.stringify(uploadData)}`);
     }
 
-    // 3) Crear video
     const videoRes = await fetch("https://api.heygen.com/v2/video/generate", {
       method: "POST",
       headers: {
@@ -351,7 +382,10 @@ app.post("/api/generate/video-full", async (req, res) => {
             },
           },
         ],
-        dimension: { width: 1080, height: 1920 },
+        dimension: {
+          width: 1080,
+          height: 1920,
+        },
         test: false,
       }),
     });
@@ -365,6 +399,7 @@ app.post("/api/generate/video-full", async (req, res) => {
     res.json({
       ok: true,
       video_id: videoData.data.video_id,
+      message: "Video enviado a HeyGen.",
     });
   } catch (err) {
     console.error("[UIH/video-full]", err);
@@ -375,7 +410,10 @@ app.post("/api/generate/video-full", async (req, res) => {
   }
 });
 
-// ── GET /api/video-status/:id ─────────────────────────────────────────────────
+/* ────────────────────────────────────────────────────────────── */
+/* ESTADO VIDEO                                                  */
+/* ────────────────────────────────────────────────────────────── */
+
 app.get("/api/video-status/:id", async (req, res) => {
   try {
     const { id } = req.params;
@@ -388,6 +426,7 @@ app.get("/api/video-status/:id", async (req, res) => {
     }
 
     const result = await pollVideoStatus(id);
+
     res.json({
       ok: true,
       ...result,
@@ -396,17 +435,23 @@ app.get("/api/video-status/:id", async (req, res) => {
     console.error("[UIH/video-status]", err);
     res.status(500).json({
       ok: false,
-      error: err.message || "Error consultando estado del video.",
+      error: err.message || "Error consultando video.",
     });
   }
 });
 
-// ── Fallback ──────────────────────────────────────────────────────────────────
+/* ────────────────────────────────────────────────────────────── */
+/* FRONTEND FALLBACK                                             */
+/* ────────────────────────────────────────────────────────────── */
+
 app.get("*", (req, res) => {
   res.sendFile(path.join(__dirname, "index.html"));
 });
 
-// ── Iniciar servidor ──────────────────────────────────────────────────────────
+/* ────────────────────────────────────────────────────────────── */
+/* START                                                         */
+/* ────────────────────────────────────────────────────────────── */
+
 app.listen(PORT, () => {
-  console.log(`[UIH] Servidor corriendo en http://localhost:${PORT}`);
+  console.log(`[UIH] Servidor corriendo en puerto ${PORT}`);
 });
