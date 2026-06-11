@@ -1,15 +1,8 @@
 /**
  * config/uihImagePolicy.js — Cerebro visual UIH
  *
- * Este archivo controla lo que SÍ y NO puede aparecer
+ * Controla lo que SÍ y NO puede aparecer
  * en imágenes publicitarias de UIH.
- *
- * Objetivo:
- * - Evitar doctores falsos.
- * - Evitar pacientes inventados.
- * - Evitar resonadores/tomógrafos/equipo no usado por UIH.
- * - Priorizar fotos reales del consultorio, Dr. Servín y logo UIH.
- * - Usar textos médicos prudentes y aprobados.
  */
 
 export const uihImagePolicy = {
@@ -36,8 +29,14 @@ export const uihImagePolicy = {
     doctor: "dr-servin.png",
     clinicPhotos: [
       "consultorio-1.jpg",
+      "consultorio-1.jpeg",
+      "consultorio-1.png",
       "consultorio-2.jpg",
+      "consultorio-2.jpeg",
+      "consultorio-2.png",
       "consultorio-3.jpg",
+      "consultorio-3.jpeg",
+      "consultorio-3.png",
       "consultorio.jpg",
       "consultorio.jpeg",
       "consultorio.png",
@@ -55,16 +54,6 @@ export const uihImagePolicy = {
       "#41AAD4",
       "#F6FBFB",
       "#A9BECF",
-    ],
-    words: [
-      "consultorio real UIH",
-      "medicina integral",
-      "ambiente profesional",
-      "confianza médica",
-      "limpieza",
-      "orden",
-      "atención humana",
-      "colores navy, teal, aqua y blanco",
     ],
   },
 
@@ -122,7 +111,7 @@ export const uihImagePolicy = {
     "Todo tratamiento debe presentarse con valoración médica previa.",
     "No prometer curaciones.",
     "No prometer resultados garantizados.",
-    "No diagnosticar en la publicidad.",
+    "No diagnosticar en publicidad.",
     "Usar lenguaje médico prudente, ético y profesional.",
   ],
 
@@ -133,10 +122,6 @@ export const uihImagePolicy = {
     "En UIH valoramos cada tratamiento desde un enfoque médico seguro, siempre con valoración previa, ética profesional y respeto por cada paciente.",
 };
 
-/**
- * Textos aprobados por servicio.
- * Estos textos son los que deben aparecer en imagen, carrusel, post y CTA.
- */
 export const uihServiceVisualCopy = {
   "consulta-primera-vez": {
     aliases: [
@@ -184,7 +169,7 @@ export const uihServiceVisualCopy = {
       "Consulta mensual para dar continuidad al plan médico y valorar evolución.",
   },
 
-  "epigenetica": {
+  epigenetica: {
     aliases: [
       "epigenética",
       "epigenetica",
@@ -300,7 +285,7 @@ export const uihServiceVisualCopy = {
       "Terapia neural con valoración médica individual y seguimiento profesional.",
   },
 
-  "nebulizacion": {
+  nebulizacion: {
     aliases: [
       "nebulización",
       "nebulizacion",
@@ -322,7 +307,7 @@ export const uihServiceVisualCopy = {
       "Nebulización como apoyo terapéutico bajo valoración médica y plan individualizado.",
   },
 
-  "videollamada": {
+  videollamada: {
     aliases: [
       "videollamada",
       "video llamada",
@@ -377,7 +362,7 @@ export function normalizeText(value = "") {
   return String(value)
     .toLowerCase()
     .normalize("NFD")
-    .replace(/[\\u0300-\\u036f]/g, "")
+    .replace(/[\u0300-\u036f]/g, "")
     .trim();
 }
 
@@ -401,6 +386,7 @@ export function detectUIHServiceKey(input = "") {
 
 export function getUIHServiceVisualCopy(input = "") {
   const key = detectUIHServiceKey(input);
+
   return {
     key,
     ...uihServiceVisualCopy[key],
@@ -410,14 +396,14 @@ export function getUIHServiceVisualCopy(input = "") {
 export function buildForbiddenVisualPrompt() {
   return `
 PROHIBIDO ABSOLUTAMENTE:
-${uihImagePolicy.forbiddenVisuals.map((item) => `- ${item}`).join("\\n")}
+${uihImagePolicy.forbiddenVisuals.map((item) => `- ${item}`).join("\n")}
 `.trim();
 }
 
 export function buildAllowedVisualPrompt() {
   return `
 PERMITIDO / DESEADO:
-${uihImagePolicy.allowedVisuals.map((item) => `- ${item}`).join("\\n")}
+${uihImagePolicy.allowedVisuals.map((item) => `- ${item}`).join("\n")}
 `.trim();
 }
 
@@ -436,8 +422,8 @@ ${copy.title}
 
 ESTILO:
 ${uihImagePolicy.visualStyle.tone}
-Colores discretos: navy, teal, aqua, blanco.
-Ambiente realista, sobrio, humano, profesional.
+Colores discretos: navy, teal, aqua y blanco.
+Ambiente realista, sobrio, humano y profesional.
 
 REGLA PRINCIPAL:
 No generar personas. No generar doctores. No generar pacientes.
