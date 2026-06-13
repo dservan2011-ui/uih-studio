@@ -1,12 +1,7 @@
 /**
  * api/branding.js — UIH Studio
- *
- * Modo seguro Real UIH:
- * - Prioriza fotos reales del consultorio.
- * - Usa logo real UIH.
- * - Usa foto real del Dr. Servín.
- * - Usa textos aprobados desde config/uihImagePolicy.js.
- * - Evita que la IA genere doctores, pacientes, resonadores o equipo falso.
+ * Branding real con fotos del consultorio + logo + foto del Dr. Servín
+ * Diseño vertical tipo post premium 1080x1350
  */
 
 import sharp from "sharp";
@@ -14,51 +9,52 @@ import path from "path";
 import fs from "fs/promises";
 import { fileURLToPath } from "url";
 
-import {
-  uihImagePolicy,
-  getUIHServiceVisualCopy,
-  buildSafeMedicalImagePrompt,
-} from "../config/uihImagePolicy.js";
-
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ASSETS = path.resolve(__dirname, "../uih-assets");
 
-const OUTPUT_WIDTH = 1024;
-const OUTPUT_HEIGHT = 1536;
+const BRAND = {
+  navy: "#032548",
+  navyDeep: "#132249",
+  teal: "#017590",
+  tealDark: "#0B4F6C",
+  aqua: "#46EFF4",
+  cyan: "#41AAD4",
+  white: "#F6F9FB",
+  gray: "#C7D3DB",
+  graySoft: "#9AA8B2"
+};
 
-async function fileExists(filePath) {
-  try {
-    await fs.access(filePath);
-    return true;
-  } catch {
-    return false;
-  }
-}
+const CANVAS = {
+  width: 1080,
+  height: 1350
+};
 
-async function findFirstExisting(files) {
-  for (const file of files) {
-    if (await fileExists(file)) return file;
-  }
-  return null;
-}
+const EXCLUDE_FILES = new Set([
+  ".gitkeep",
+  "dr-servin.png",
+  "logo-uih.png"
+]);
 
-function escapeXML(str = "") {
-  return String(str)
+/* =========================================================
+   HELPERS
+========================================================= */
+
+function escapeXml(value = "") {
+  return String(value)
     .replace(/&/g, "&amp;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&apos;")
     .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
 }
 
-function splitText(text = "", maxChars = 30) {
-  const words = String(text).trim().split(/\s+/);
+function wrapText(text = "", maxChars = 36) {
+  const words = String(text).split(/\s+/).filter(Boolean);
   const lines = [];
   let current = "";
 
   for (const word of words) {
     const test = current ? `${current} ${word}` : word;
-
     if (test.length <= maxChars) {
       current = test;
     } else {
@@ -71,421 +67,462 @@ function splitText(text = "", maxChars = 30) {
   return lines;
 }
 
+function chunkBullets(items = [], maxChars = 34) {
+  const out = [];
+  for (const item of items) {
+    const lines = wrapText(item, maxChars);
+    out.push(lines);
+  }
+  return out;
+}
+
+function sanitizeFilename(name = "uih-post.png") {
+  return String(name)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^\w.-]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+    .toLowerCase();
+}
+
 async function circularCrop(imagePath, diameter) {
   const r = Math.floor(diameter / 2);
-
   const mask = Buffer.from(
-    `<svg width="${diameter}" height="${diameter}" viewBox="0 0 ${diameter} ${diameter}" xmlns="http://www.w3.org/2000/svg">
+    `<svg width="${diameter}" height="${diameter}" xmlns="http://www.w3.org/2000/svg">
       <circle cx="${r}" cy="${r}" r="${r}" fill="white"/>
     </svg>`
   );
 
   return sharp(imagePath)
-    .rotate()
-    .resize(diameter, diameter, {
-      fit: "cover",
-      position: "top",
-    })
+    .resize(diameter, diameter, { fit: "cover", position: "center" })
     .composite([{ input: mask, blend: "dest-in" }])
     .png()
     .toBuffer();
 }
 
-function clinicOverlaySVG(width, height) {
+function makeCircleBorder(diameter, border = 8) {
+  const total = diameter + border * 2;
+  const radius = total / 2;
+
   return Buffer.from(
-    `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <linearGradient id="shadeTop" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="#032548" stop-opacity="0.26"/>
-          <stop offset="45%" stop-color="#032548" stop-opacity="0.06"/>
-          <stop offset="72%" stop-color="#032548" stop-opacity="0.16"/>
-          <stop offset="100%" stop-color="#032548" stop-opacity="0.72"/>
-        </linearGradient>
-
-        <linearGradient id="shadeSide" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0%" stop-color="#032548" stop-opacity="0.24"/>
-          <stop offset="50%" stop-color="#017590" stop-opacity="0.04"/>
-          <stop offset="100%" stop-color="#032548" stop-opacity="0.22"/>
-        </linearGradient>
-      </defs>
-
-      <rect x="0" y="0" width="${width}" height="${height}" fill="url(#shadeTop)"/>
-      <rect x="0" y="0" width="${width}" height="${height}" fill="url(#shadeSide)"/>
+    `<svg width="${total}" height="${total}" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="${radius}" cy="${radius}" r="${radius - 2}"
+        fill="rgba(255,255,255,0.95)"
+        stroke="${BRAND.aqua}"
+        stroke-width="${border}"/>
     </svg>`
   );
 }
 
-function watermarkSVG(width, height) {
-  return Buffer.from(
-    `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
-      <text x="${width / 2}" y="${height * 0.45}"
-        text-anchor="middle"
-        dominant-baseline="middle"
-        font-family="Arial, Helvetica, sans-serif"
-        font-size="${Math.round(width * 0.15)}"
-        font-weight="900"
-        fill="#46EFF4"
-        opacity="0.035"
-        letter-spacing="12">
-        UIH
-      </text>
-    </svg>`
-  );
+async function getBackgroundFiles() {
+  const files = await fs.readdir(ASSETS);
+  return files.filter((file) => {
+    const lower = file.toLowerCase();
+
+    if (EXCLUDE_FILES.has(file)) return false;
+    if (lower === "assets") return false;
+
+    return [".jpg", ".jpeg", ".png", ".webp"].some((ext) => lower.endsWith(ext));
+  });
 }
 
-function infoPanelSVG(width, height, copy) {
-  const title = copy.title || "ATENCIÓN MÉDICA INTEGRAL";
-  const subtitle =
-    copy.subtitle || "Enfoque profesional, ético y personalizado.";
-  const bullets = Array.isArray(copy.bullets) ? copy.bullets.slice(0, 4) : [];
-  const ctaLabel = copy.ctaLabel || "Agenda tu cita";
-
-  const panelH = Math.round(height * 0.34);
-  const panelY = height - panelH;
-  const padX = Math.round(width * 0.055);
-
-  const titleSize = Math.round(width * 0.040);
-  const subtitleSize = Math.round(width * 0.022);
-  const bulletSize = Math.round(width * 0.019);
-
-  const titleLines = splitText(title, 24).slice(0, 2);
-  const subtitleLines = splitText(subtitle, 43).slice(0, 3);
-
-  let y = panelY + Math.round(width * 0.075);
-
-  let titleSVG = "";
-  for (const line of titleLines) {
-    titleSVG += `
-      <text x="${padX}" y="${y}"
-        font-family="Arial, Helvetica, sans-serif"
-        font-size="${titleSize}"
-        font-weight="900"
-        fill="#FFFFFF"
-        letter-spacing="1.2">
-        ${escapeXML(line)}
-      </text>
-    `;
-    y += Math.round(width * 0.050);
+function chooseBackground(files, preferredName = null) {
+  if (!files.length) {
+    throw new Error("No hay fotos de fondo en uih-assets.");
   }
 
-  y += Math.round(width * 0.010);
-
-  let subtitleSVG = "";
-  for (const line of subtitleLines) {
-    subtitleSVG += `
-      <text x="${padX}" y="${y}"
-        font-family="Arial, Helvetica, sans-serif"
-        font-size="${subtitleSize}"
-        font-weight="500"
-        fill="#D9EEF6">
-        ${escapeXML(line)}
-      </text>
-    `;
-    y += Math.round(width * 0.031);
+  if (preferredName && files.includes(preferredName)) {
+    return preferredName;
   }
 
-  y += Math.round(width * 0.018);
+  // Random real para que NO salga siempre la misma foto
+  const index = Math.floor(Math.random() * files.length);
+  return files[index];
+}
 
-  let bulletSVG = "";
-  for (const bullet of bullets) {
-    const bulletLines = splitText(bullet, 34).slice(0, 2);
+function getThemeContent(prompt = "") {
+  const p = String(prompt).toLowerCase();
 
-    bulletSVG += `
-      <circle cx="${padX + 8}" cy="${y - 6}" r="4" fill="#46EFF4"/>
-      <text x="${padX + 26}" y="${y}"
-        font-family="Arial, Helvetica, sans-serif"
-        font-size="${bulletSize}"
-        font-weight="700"
-        fill="#FFFFFF">
-        ${escapeXML(bulletLines[0] || "")}
+  if (p.includes("consulta") && p.includes("primera")) {
+    return {
+      title: "CONSULTA DE PRIMERA VEZ",
+      subtitle: "Atención médica integral, personalizada y enfocada en comprender al paciente más allá del síntoma.",
+      bullets: [
+        "Historia clínica completa",
+        "Escáner intersticial",
+        "Medicamento homeopático por un mes",
+        "Seguimiento médico personalizado"
+      ],
+      cta: "AGENDA TU CITA",
+      phone: "664-628-2202",
+      website: "www.uih.mx",
+      footer: "COFEPRIS 25020222002A00159"
+    };
+  }
+
+  if (p.includes("tdah") || p.includes("déficit") || p.includes("deficit")) {
+    return {
+      title: "TDAH / DÉFICIT DE ATENCIÓN",
+      subtitle: "Abordaje integral con valoración médica, enfoque personalizado y seguimiento profesional.",
+      bullets: [
+        "Valoración individual del paciente",
+        "Tratamiento homeopático personalizado",
+        "Seguimiento continuo",
+        "Orientación integral a la familia"
+      ],
+      cta: "SOLICITA INFORMES",
+      phone: "664-628-2202",
+      website: "www.uih.mx",
+      footer: "COFEPRIS 25020222002A00159"
+    };
+  }
+
+  if (p.includes("epigenet")) {
+    return {
+      title: "EPIGENÉTICA",
+      subtitle: "Herramienta complementaria para un enfoque integral y personalizado del bienestar.",
+      bullets: [
+        "Valoración integral",
+        "Enfoque personalizado",
+        "Seguimiento profesional",
+        "Atención continua"
+      ],
+      cta: "AGENDA TU CITA",
+      phone: "664-628-2202",
+      website: "www.uih.mx",
+      footer: "COFEPRIS 25020222002A00159"
+    };
+  }
+
+  return {
+    title: "UNIDAD INTEGRAL HOMEOPÁTICA",
+    subtitle: "Atención médica integral, personalizada y con seguimiento profesional.",
+    bullets: [
+      "Valoración médica",
+      "Enfoque personalizado",
+      "Seguimiento continuo",
+      "Atención profesional"
+    ],
+    cta: "AGENDA TU CITA",
+    phone: "664-628-2202",
+    website: "www.uih.mx",
+    footer: "COFEPRIS 25020222002A00159"
+  };
+}
+
+function makeOverlaySvg(content, bgFileName = "") {
+  const { width, height } = CANVAS;
+
+  const titleLines = wrapText(content.title, 24);
+  const subtitleLines = wrapText(content.subtitle, 46);
+  const bullets = chunkBullets(content.bullets, 34);
+
+  let titleTspans = "";
+  let titleY = 1028;
+  titleLines.forEach((line, i) => {
+    titleTspans += `<tspan x="82" y="${titleY + i * 54}">${escapeXml(line)}</tspan>`;
+  });
+
+  let subtitleTspans = "";
+  const subtitleStart = titleY + titleLines.length * 54 + 26;
+  subtitleLines.forEach((line, i) => {
+    subtitleTspans += `<tspan x="82" y="${subtitleStart + i * 30}">${escapeXml(line)}</tspan>`;
+  });
+
+  let bulletsSvg = "";
+  let y = subtitleStart + subtitleLines.length * 30 + 24;
+
+  for (const group of bullets) {
+    const first = group[0] || "";
+    bulletsSvg += `
+      <circle cx="92" cy="${y - 7}" r="4.5" fill="${BRAND.aqua}" />
+      <text x="108" y="${y}" font-family="Arial, sans-serif" font-size="24" fill="${BRAND.white}" font-weight="600">
+        ${escapeXml(first)}
       </text>
     `;
+    y += 34;
 
-    y += Math.round(width * 0.030);
-
-    if (bulletLines[1]) {
-      bulletSVG += `
-        <text x="${padX + 26}" y="${y}"
-          font-family="Arial, Helvetica, sans-serif"
-          font-size="${bulletSize}"
-          font-weight="700"
-          fill="#FFFFFF">
-          ${escapeXML(bulletLines[1])}
-        </text>
-      `;
-
-      y += Math.round(width * 0.030);
+    if (group.length > 1) {
+      for (let i = 1; i < group.length; i++) {
+        bulletsSvg += `
+          <text x="108" y="${y}" font-family="Arial, sans-serif" font-size="24" fill="${BRAND.white}" font-weight="600">
+            ${escapeXml(group[i])}
+          </text>
+        `;
+        y += 30;
+      }
     }
   }
 
-  const ctaW = Math.round(width * 0.32);
-  const ctaH = Math.round(height * 0.070);
-  const ctaX = width - ctaW - padX;
-  const ctaY = height - ctaH - Math.round(height * 0.052);
-
-  return Buffer.from(
-    `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
+  return Buffer.from(`
+    <svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
       <defs>
-        <linearGradient id="panelGrad" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stop-color="#032548" stop-opacity="0.96"/>
-          <stop offset="58%" stop-color="#0B4F6C" stop-opacity="0.93"/>
-          <stop offset="100%" stop-color="#017590" stop-opacity="0.90"/>
+        <linearGradient id="fullShade" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="rgba(3,37,72,0.15)"/>
+          <stop offset="55%" stop-color="rgba(3,37,72,0.10)"/>
+          <stop offset="100%" stop-color="rgba(3,37,72,0.18)"/>
         </linearGradient>
 
-        <linearGradient id="ctaGrad" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stop-color="#017590"/>
-          <stop offset="100%" stop-color="#41AAD4"/>
+        <linearGradient id="bottomPanel" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stop-color="rgba(3,37,72,0.96)"/>
+          <stop offset="100%" stop-color="rgba(1,117,144,0.92)"/>
+        </linearGradient>
+
+        <linearGradient id="fadeTop" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="rgba(3,37,72,0.00)"/>
+          <stop offset="100%" stop-color="rgba(3,37,72,0.10)"/>
         </linearGradient>
       </defs>
 
-      <rect x="0" y="${panelY}" width="${width}" height="${panelH}" fill="url(#panelGrad)"/>
+      <!-- sombreado general -->
+      <rect x="0" y="0" width="${width}" height="${height}" fill="url(#fullShade)"/>
 
-      <rect x="${padX}" y="${panelY + 28}" width="${Math.round(
-        width * 0.18
-      )}" height="6" rx="3" fill="#46EFF4"/>
+      <!-- sombreado suave arriba -->
+      <rect x="0" y="0" width="${width}" height="240" fill="url(#fadeTop)"/>
 
-      ${titleSVG}
-      ${subtitleSVG}
-      ${bulletSVG}
+      <!-- panel inferior para tapar letras del fondo -->
+      <rect x="0" y="930" width="${width}" height="420" fill="url(#bottomPanel)"/>
 
-      <rect x="${ctaX}" y="${ctaY}" width="${ctaW}" height="${ctaH}" rx="18" fill="url(#ctaGrad)"/>
+      <!-- acento línea -->
+      <rect x="82" y="989" width="140" height="6" rx="3" fill="${BRAND.aqua}"/>
 
-      <text x="${ctaX + ctaW / 2}" y="${ctaY + 34}"
-        text-anchor="middle"
-        font-family="Arial, Helvetica, sans-serif"
-        font-size="${Math.round(width * 0.018)}"
-        font-weight="900"
-        fill="#FFFFFF">
-        ${escapeXML(String(ctaLabel).toUpperCase())}
+      <!-- título -->
+      <text font-family="Arial, sans-serif" font-size="58" font-weight="800" fill="${BRAND.white}">
+        ${titleTspans}
       </text>
 
-      <text x="${ctaX + ctaW / 2}" y="${ctaY + 70}"
-        text-anchor="middle"
-        font-family="Arial, Helvetica, sans-serif"
-        font-size="${Math.round(width * 0.030)}"
-        font-weight="900"
-        fill="#FFFFFF">
-        ${escapeXML(uihImagePolicy.phone)}
+      <!-- subtítulo -->
+      <text font-family="Arial, sans-serif" font-size="26" font-weight="500" fill="${BRAND.white}">
+        ${subtitleTspans}
       </text>
 
-      <text x="${padX}" y="${height - 38}"
-        font-family="Arial, Helvetica, sans-serif"
-        font-size="${Math.round(width * 0.016)}"
-        font-weight="700"
-        fill="#B8D4E0">
-        ${escapeXML(uihImagePolicy.website)}
+      <!-- bullets -->
+      ${bulletsSvg}
+
+      <!-- botón CTA -->
+      <rect x="720" y="1215" width="270" height="86" rx="18" fill="${BRAND.cyan}" opacity="0.98"/>
+      <text x="855" y="1246" text-anchor="middle" font-family="Arial, sans-serif" font-size="22" font-weight="700" fill="${BRAND.white}">
+        ${escapeXml(content.cta)}
+      </text>
+      <text x="855" y="1280" text-anchor="middle" font-family="Arial, sans-serif" font-size="24" font-weight="800" fill="${BRAND.white}">
+        ${escapeXml(content.phone)}
       </text>
 
-      <text x="${padX}" y="${height - 16}"
-        font-family="Arial, Helvetica, sans-serif"
-        font-size="${Math.round(width * 0.012)}"
-        font-weight="600"
-        fill="#9EC0CF">
-        ${escapeXML(uihImagePolicy.cofepris)}
+      <!-- footer -->
+      <text x="82" y="1276" font-family="Arial, sans-serif" font-size="18" font-weight="600" fill="${BRAND.white}">
+        ${escapeXml(content.website)}
       </text>
-    </svg>`
-  );
+      <text x="82" y="1303" font-family="Arial, sans-serif" font-size="13" font-weight="500" fill="${BRAND.gray}">
+        ${escapeXml(content.footer)}
+      </text>
+
+      <!-- etiqueta discreta fondo usado -->
+      <text x="995" y="918" text-anchor="end" font-family="Arial, sans-serif" font-size="12" fill="rgba(255,255,255,0.15)">
+        ${escapeXml(bgFileName)}
+      </text>
+    </svg>
+  `);
 }
 
-async function createBaseFromRealClinicPhoto() {
-  const clinicFiles = (uihImagePolicy.assets.clinicPhotos || []).map((file) =>
-    path.join(ASSETS, file)
-  );
-
-  const clinicFile = await findFirstExisting(clinicFiles);
-
-  if (!clinicFile) return null;
-
-  console.log(`[UIH/image] Usando foto real del consultorio: ${clinicFile}`);
-
-  const base = await sharp(clinicFile)
-    .rotate()
-    .resize(OUTPUT_WIDTH, OUTPUT_HEIGHT, {
-      fit: "cover",
-      position: "center",
-    })
-    .modulate({
-      brightness: 0.94,
-      saturation: 0.92,
-    })
-    .sharpen({
-      sigma: 0.5,
-    })
-    .png()
-    .toBuffer();
-
-  return sharp(base)
-    .composite([
-      {
-        input: clinicOverlaySVG(OUTPUT_WIDTH, OUTPUT_HEIGHT),
-        top: 0,
-        left: 0,
-      },
-    ])
-    .png()
-    .toBuffer();
-}
-
-async function createSafeBaseWithOpenAI(prompt, opts = {}) {
-  const { default: OpenAI } = await import("openai");
-
-  if (!process.env.OPENAI_API_KEY) {
-    throw new Error("Falta OPENAI_API_KEY en Render.");
-  }
-
-  const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
-  });
-
-  const safePrompt = buildSafeMedicalImagePrompt({
-    theme: prompt,
-    service: opts.service || "",
-    engine: "openai",
-  });
-
-  console.log(
-    "[UIH/image] No hay foto real. Generando fondo seguro con OpenAI..."
-  );
-
-  const response = await openai.images.generate({
-    model: "gpt-image-1",
-    prompt: safePrompt,
-    size: "1024x1536",
-    quality: "high",
-    n: 1,
-  });
-
-  const b64 = response?.data?.[0]?.b64_json;
-
-  if (!b64) {
-    throw new Error("OpenAI no devolvió imagen en base64.");
-  }
-
-  return Buffer.from(b64, "base64");
-}
+/* =========================================================
+   BRANDING SIMPLE SOBRE UNA IMAGEN EXISTENTE
+========================================================= */
 
 export async function applyUIHBranding(input, outputPath, opts = {}) {
-  const prompt = opts.prompt || "";
-  const copy = opts.copy || getUIHServiceVisualCopy(prompt);
+  const {
+    includeLogo = true,
+    includeDoctor = true,
+    includeBottomPanel = true,
+    title = "",
+    subtitle = "",
+    phone = "664-628-2202"
+  } = opts;
 
-  const baseBuffer = await sharp(input)
-    .rotate()
-    .resize(OUTPUT_WIDTH, OUTPUT_HEIGHT, {
-      fit: "cover",
-      position: "center",
-    })
-    .png()
-    .toBuffer();
-
-  const base = sharp(baseBuffer);
-  const { width, height } = await base.metadata();
+  const base = sharp(input);
+  const meta = await base.metadata();
+  const width = meta.width || 1080;
+  const height = meta.height || 1350;
 
   const layers = [];
 
-  if (opts.includeWatermark) {
+  // sombreado general
+  layers.push({
+    input: Buffer.from(`
+      <svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
+        <rect width="${width}" height="${height}" fill="rgba(3,37,72,0.10)"/>
+      </svg>
+    `),
+    top: 0,
+    left: 0
+  });
+
+  if (includeBottomPanel) {
     layers.push({
-      input: watermarkSVG(width, height),
+      input: Buffer.from(`
+        <svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="panel" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stop-color="rgba(3,37,72,0.92)"/>
+              <stop offset="100%" stop-color="rgba(1,117,144,0.90)"/>
+            </linearGradient>
+          </defs>
+          <rect x="0" y="${height - 280}" width="${width}" height="280" fill="url(#panel)"/>
+        </svg>
+      `),
       top: 0,
-      left: 0,
+      left: 0
     });
   }
 
-  const logoFile = path.join(ASSETS, uihImagePolicy.assets.logo);
-
-  if (await fileExists(logoFile)) {
-    const logoW = Math.round(width * 0.18);
-    const margin = Math.round(width * 0.055);
-
-    const logoBuf = await sharp(logoFile)
-      .rotate()
-      .resize(logoW, logoW, {
-        fit: "contain",
-        withoutEnlargement: true,
-      })
+  if (includeLogo) {
+    const logoPath = path.join(ASSETS, "logo-uih.png");
+    const logoBuf = await sharp(logoPath)
+      .resize(Math.round(width * 0.20), Math.round(width * 0.20), { fit: "inside" })
       .png()
       .toBuffer();
 
     layers.push({
       input: logoBuf,
-      top: margin,
-      left: margin,
+      top: Math.round(height * 0.05),
+      left: Math.round(width * 0.05)
     });
-  } else {
-    console.warn(`[UIH/branding] No existe logo: ${logoFile}`);
   }
 
-  const doctorFile = path.join(ASSETS, uihImagePolicy.assets.doctor);
+  if (includeDoctor) {
+    const doctorPath = path.join(ASSETS, "dr-servin.png");
+    const size = Math.round(width * 0.18);
+    const border = 8;
 
-  if (await fileExists(doctorFile)) {
-    const size = Math.round(width * 0.23);
-    const margin = Math.round(width * 0.045);
-    const border = Math.max(8, Math.round(width * 0.006));
-    const borderSize = size + border * 2;
-
-    const doctorBuf = await circularCrop(doctorFile, size);
-
-    const borderBuf = Buffer.from(
-      `<svg width="${borderSize}" height="${borderSize}" viewBox="0 0 ${borderSize} ${borderSize}" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="${borderSize / 2}" cy="${borderSize / 2}" r="${borderSize / 2}" fill="#F6FBFB" opacity="0.98"/>
-        <circle cx="${borderSize / 2}" cy="${borderSize / 2}" r="${borderSize / 2 - 5}" fill="none" stroke="#46EFF4" stroke-width="4" opacity="0.95"/>
-        <circle cx="${borderSize / 2}" cy="${borderSize / 2}" r="${borderSize / 2 - 12}" fill="none" stroke="#017590" stroke-width="2" opacity="0.65"/>
-      </svg>`
-    );
-
-    const left = width - borderSize - margin;
-    const top = margin;
+    const doctorBuf = await circularCrop(doctorPath, size);
+    const borderBuf = makeCircleBorder(size, border);
 
     layers.push({
       input: borderBuf,
-      top,
-      left,
+      top: Math.round(height * 0.05) - border,
+      left: width - size - Math.round(width * 0.05) - border
     });
 
     layers.push({
       input: doctorBuf,
-      top: top + border,
-      left: left + border,
+      top: Math.round(height * 0.05),
+      left: width - size - Math.round(width * 0.05)
     });
-  } else {
-    console.warn(`[UIH/branding] No existe foto doctor: ${doctorFile}`);
   }
 
-  layers.push({
-    input: infoPanelSVG(width, height, copy),
-    top: 0,
-    left: 0,
-  });
+  if (title || subtitle) {
+    const t = escapeXml(title);
+    const s = escapeXml(subtitle);
+
+    layers.push({
+      input: Buffer.from(`
+        <svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
+          <text x="60" y="${height - 200}" font-family="Arial, sans-serif" font-size="48" font-weight="800" fill="${BRAND.white}">
+            ${t}
+          </text>
+          <text x="60" y="${height - 150}" font-family="Arial, sans-serif" font-size="24" font-weight="500" fill="${BRAND.white}">
+            ${s}
+          </text>
+          <rect x="${width - 260}" y="${height - 120}" width="220" height="70" rx="16" fill="${BRAND.cyan}" />
+          <text x="${width - 150}" y="${height - 92}" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" font-weight="700" fill="${BRAND.white}">
+            AGENDA TU CITA
+          </text>
+          <text x="${width - 150}" y="${height - 65}" text-anchor="middle" font-family="Arial, sans-serif" font-size="22" font-weight="800" fill="${BRAND.white}">
+            ${escapeXml(phone)}
+          </text>
+        </svg>
+      `),
+      top: 0,
+      left: 0
+    });
+  }
 
   const result = await base.composite(layers).png().toBuffer();
 
   if (outputPath) {
-    await fs.mkdir(path.dirname(outputPath), {
-      recursive: true,
-    });
-
+    await fs.mkdir(path.dirname(outputPath), { recursive: true });
     await fs.writeFile(outputPath, result);
-
-    console.log(`[UIH/branding] Imagen guardada: ${outputPath}`);
+    console.log(`[UIH] ✓ Imagen con branding guardada: ${outputPath}`);
   }
 
   return result;
 }
 
+/* =========================================================
+   GENERADOR PRINCIPAL: USA FOTOS REALES DEL CONSULTORIO
+========================================================= */
+
 export async function generateBrandedImage(prompt, outputPath, opts = {}) {
-  const copy = getUIHServiceVisualCopy(`${prompt} ${opts.service || ""}`);
+  const {
+    backgroundName = null
+  } = opts;
 
-  let imageBuffer = await createBaseFromRealClinicPhoto();
+  const bgFiles = await getBackgroundFiles();
+  const selectedBg = chooseBackground(bgFiles, backgroundName);
 
-  if (!imageBuffer) {
-    imageBuffer = await createSafeBaseWithOpenAI(prompt, opts);
+  const backgroundPath = path.join(ASSETS, selectedBg);
+  const doctorPath = path.join(ASSETS, "dr-servin.png");
+  const logoPath = path.join(ASSETS, "logo-uih.png");
+
+  const content = getThemeContent(prompt);
+
+  console.log(`[UIH] Fondo seleccionado: ${selectedBg}`);
+
+  const background = await sharp(backgroundPath)
+    .resize(CANVAS.width, CANVAS.height, {
+      fit: "cover",
+      position: "attention"
+    })
+    .png()
+    .toBuffer();
+
+  const logoBuf = await sharp(logoPath)
+    .resize(185, 185, { fit: "inside" })
+    .png()
+    .toBuffer();
+
+  const doctorSize = 182;
+  const doctorBuf = await circularCrop(doctorPath, doctorSize);
+  const doctorBorderBuf = makeCircleBorder(doctorSize, 8);
+
+  const overlaySvg = makeOverlaySvg(content, selectedBg);
+
+  const result = await sharp(background)
+    .composite([
+      {
+        input: logoBuf,
+        top: 42,
+        left: 54
+      },
+      {
+        input: doctorBorderBuf,
+        top: 32,
+        left: 844
+      },
+      {
+        input: doctorBuf,
+        top: 40,
+        left: 852
+      },
+      {
+        input: overlaySvg,
+        top: 0,
+        left: 0
+      }
+    ])
+    .png()
+    .toBuffer();
+
+  if (outputPath) {
+    const safeName = sanitizeFilename(path.basename(outputPath));
+    const finalPath = path.join(path.dirname(outputPath), safeName);
+
+    await fs.mkdir(path.dirname(finalPath), { recursive: true });
+    await fs.writeFile(finalPath, result);
+
+    console.log(`[UIH] ✓ Post real generado: ${finalPath}`);
+    return result;
   }
 
-  console.log("[UIH/image] Aplicando branding UIH seguro con política visual...");
-
-  return applyUIHBranding(imageBuffer, outputPath, {
-    ...opts,
-    prompt,
-    copy,
-    includeWatermark: false,
-  });
+  return result;
 }
